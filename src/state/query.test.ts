@@ -2,43 +2,12 @@ import { act, renderHook } from '@testing-library/react'
 import { Component, createElement, type ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { fakeClient, type PendingQuery } from '../../tests/unit/fake-ledger-client'
 import { transaction } from '../domain/transactions'
-import type { LedgerClient } from '../worker/client'
 import type { LedgerResult } from '../worker/protocol'
 import { setCategory, setNote } from './edits'
 import { useLedgerQuery } from './query'
-import { DEFAULT_FILTER, type FilterState } from './url'
-
-interface PendingQuery {
-  readonly filter: FilterState
-  readonly channel: string
-  readonly resolve: (result: LedgerResult | null) => void
-  readonly reject: (reason: Error) => void
-  settled: boolean
-}
-
-function fakeClient({ supersede = true }: { readonly supersede?: boolean } = {}): { client: LedgerClient; calls: PendingQuery[] } {
-  const calls: PendingQuery[] = []
-  const client: LedgerClient = {
-    query: (filter, channel) => {
-      for (const earlier of calls) {
-        if (supersede && earlier.channel === channel && !earlier.settled) {
-          earlier.settled = true
-          earlier.resolve(null)
-        }
-      }
-      return new Promise((resolve, reject) => {
-        calls.push({ filter, channel, resolve, reject, settled: false })
-      })
-    },
-    history: () => Promise.resolve(new Int32Array(0)),
-    series: () => Promise.reject(new Error('Series is not used here.')),
-    setEdits: () => undefined,
-    ready: () => Promise.resolve(),
-    terminate: () => undefined,
-  }
-  return { client, calls }
-}
+import { DEFAULT_FILTER } from './url'
 
 function result(...ids: number[]): LedgerResult {
   return { ids: new Int32Array(ids), totals: { count: ids.length, debits: 0, credits: 0, net: 0, currency: 'EUR' } }

@@ -1,5 +1,6 @@
 import { createContext, use, useEffect, useSyncExternalStore, type ReactNode } from 'react'
 
+import { ErrorBoundary } from './ErrorBoundary'
 import { getLocation, subscribe, type RouteLocation } from './history'
 import { resolve, type Route, type RouteMatch } from './match'
 
@@ -49,8 +50,12 @@ export function useRoute(): RouterState {
 }
 
 export function RouteOutlet() {
-  const { route, params } = useRoute()
+  const { route, params, location } = useRoute()
   const Page = route.component
 
-  return <Page params={params} />
+  return (
+    <ErrorBoundary pathname={location.pathname}>
+      <Page params={params} />
+    </ErrorBoundary>
+  )
 }

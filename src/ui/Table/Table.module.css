@@ -87,3 +87,56 @@
 .header:where(.end, .numeric) .sort {
   flex-direction: row-reverse;
 }
+
+.virtual {
+  position: relative;
+  table-layout: fixed;
+}
+
+.virtual > thead {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--z-sticky);
+}
+
+.virtual .header {
+  position: static;
+}
+
+.virtual .row {
+  scroll-margin-block-start: calc(var(--table-row-height) + var(--rule-width));
+}
+
+.virtual .row > td {
+  white-space: nowrap;
+}
+
+.virtual .row > td:where([data-truncate]) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.body::before,
+.body::after {
+  content: "";
+  display: block;
+}
+
+.body::before {
+  block-size: var(--table-space-before, 0px);
+}
+
+.body::after {
+  block-size: var(--table-space-after, 0px);
+}
+
+.sentinel {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

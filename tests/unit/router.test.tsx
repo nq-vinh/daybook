@@ -9,6 +9,11 @@ import { matchPath, resolve } from '../../src/router/match'
 import { Link } from '../../src/router/link'
 import { RouterProvider } from '../../src/router/router'
 
+vi.mock('../../src/worker/client', async () => {
+  const { sharedLedgerClient } = await import('./fake-ledger-client')
+  return { ledgerClient: sharedLedgerClient.client }
+})
+
 function clickDefaultPrevented(element: HTMLElement, init: MouseEventInit = {}): boolean {
   let defaultPrevented = true
   const recordDefault = (event: MouseEvent) => {
@@ -154,6 +159,13 @@ describe('router', () => {
       configurable: true,
       value: (update: () => void) => {
         pending.push(update)
+        const skipped = () => Promise.reject(new DOMException('Transition was skipped', 'AbortError'))
+        return {
+          ready: skipped(),
+          finished: skipped(),
+          updateCallbackDone: skipped(),
+          skipTransition: () => undefined,
+        }
       },
     })
     Object.defineProperty(window, 'matchMedia', {

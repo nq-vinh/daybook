@@ -1,0 +1,189 @@
+.layout {
+  display: grid;
+  grid-template-columns: var(--ledger-sidebar-width) minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: start;
+  --ledger-sidebar-width: 260px;
+}
+
+.sidebar {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sidebarHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.sidebarHeading {
+  display: inline;
+  font-size: var(--text-lg);
+}
+
+.count {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.summary {
+  padding-block: var(--space-2);
+  cursor: pointer;
+}
+
+.disclosure[open] > .summary {
+  margin-block-end: var(--space-4);
+}
+
+.controls {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.group {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4) 0 0;
+  border: none;
+  border-block-start: var(--rule-width) solid var(--color-border);
+  margin: 0;
+}
+
+.subgroup {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  border: none;
+  margin: 0;
+}
+
+.legend {
+  padding: 0;
+  font-weight: var(--font-weight-strong);
+}
+
+.sublegend {
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.clear {
+  justify-self: start;
+}
+
+.results {
+  display: grid;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.total {
+  display: grid;
+  gap: var(--space-1);
+  padding-block-start: var(--space-2);
+  border-block-start: var(--rule-width) solid var(--color-border);
+}
+
+.total > dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.total > dd {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
+}
+
+.selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  border-block: var(--rule-width) solid var(--color-border);
+}
+
+.selectionCount {
+  align-self: center;
+  margin: 0;
+  font-weight: var(--font-weight-strong);
+}
+
+.notice {
+  align-self: center;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.ledger {
+  font-variant-numeric: tabular-nums;
+}
+
+.pending {
+  color: var(--color-text-muted);
+}
+
+@media (width < 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.selectionSlot {
+  min-block-size: calc(var(--control-height-md) + 2 * var(--space-3) + 2 * var(--rule-width));
+}
+
+.inlineField {
+  grid-auto-flow: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.scroll {
+  min-inline-size: 0;
+}
+
+.ledger th:where([data-column="bookedAt"]) {
+  inline-size: 7.5rem;
+}
+
+.ledger th:where([data-column="status"]) {
+  inline-size: var(--table-column-sm);
+}
+
+.ledger th:where([data-column="debit"], [data-column="credit"]) {
+  inline-size: 8.5rem;
+}
+
+.ledger th:where([data-column="balance"]) {
+  inline-size: 9rem;
+}
+
+.ledger th:where([data-column="category"]) {
+  inline-size: 9rem;
+}
+
+@media (width < 1280px) {
+  .scroll {
+    overflow-x: auto;
+  }
+
+  .ledger {
+    min-inline-size: 60rem;
+  }
+}

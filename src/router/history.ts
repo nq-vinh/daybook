@@ -145,9 +145,12 @@ function commit(scrollY: number, fragment: string | null = null): void {
     return
   }
 
-  document.startViewTransition(() => {
+  const transition = document.startViewTransition(() => {
     flushSync(publish)
   })
+  for (const settled of [transition.ready, transition.finished, transition.updateCallbackDone]) {
+    Promise.resolve(settled).catch(() => undefined)
+  }
 }
 
 window.addEventListener('popstate', () => {
@@ -183,12 +186,11 @@ export function navigate(to: string, { replace = false }: { readonly replace?: b
     return
   }
 
-  rememberScroll(ensureKey())
-  currentKey = nextKey()
-
   if (replace) {
-    window.history.replaceState({ key: currentKey }, '', url)
+    window.history.replaceState({ key: ensureKey() }, '', url)
   } else {
+    rememberScroll(ensureKey())
+    currentKey = nextKey()
     window.history.pushState({ key: currentKey }, '', url)
   }
 

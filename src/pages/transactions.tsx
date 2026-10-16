@@ -1,8 +1,19 @@
+import { lazy, Suspense } from 'react'
+
+import { Skeleton } from '../ui/Skeleton/Skeleton'
+
+const LedgerContent = lazy(async () => {
+  const { LedgerContent: content } = await import('./transactions/content')
+  return { default: content }
+})
+
 export function TransactionsPage() {
   return (
     <>
       <h1 tabIndex={-1}>Transactions</h1>
-      <p>The ledger of every payment in and out, with filters and search, will appear here.</p>
+      <Suspense fallback={<Skeleton variant="text" lines={8} />}>
+        <LedgerContent />
+      </Suspense>
     </>
   )
 }

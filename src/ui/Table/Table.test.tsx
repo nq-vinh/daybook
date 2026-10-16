@@ -1,10 +1,12 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { act } from 'react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Table, type TableColumn, type TableSort } from './Table'
 import styles from './Table.module.css'
+import { viewport } from './virtual'
 
 interface Entry {
   readonly id: string
@@ -50,24 +52,18 @@ describe('Table', () => {
     expect(getRowKey).toHaveBeenCalledTimes(3)
   })
 
-  it('switches to grid semantics with row count and indices when virtualised', () => {
+  it('switches to grid semantics and renders only the window plus overscan when virtualised', () => {
     render(
-      <Table
-        caption="Transactions"
-        hideCaption
-        columns={plainColumns}
-        rows={makeRows(3)}
-        getRowKey={(row) => row.id}
-        virtualised
-        rowCount={5000}
-        rowIndexOffset={40}
-      />,
+      <Table caption="Transactions" hideCaption columns={plainColumns} rows={makeRows(5000)} getRowKey={(row) => row.id} virtualised />,
     )
 
     const grid = screen.getByRole('grid', { name: 'Transactions' })
     expect(grid).toHaveAttribute('aria-rowcount', '5001')
     expect(screen.getAllByRole('row')[0]).toHaveAttribute('aria-rowindex', '1')
-    expect(bodyRows().map((row) => row.getAttribute('aria-rowindex'))).toEqual(['42', '43', '44'])
+    const indices = bodyRows().map((row) => row.getAttribute('aria-rowindex'))
+    expect(indices).toHaveLength(Math.floor((window.innerHeight - 1) / 36) + 1 + 4)
+    expect(indices[0]).toBe('2')
+    expect(bodyRows()[0]).toHaveAttribute('tabindex', '0')
   })
 
   it('cycles aria-sort through the header buttons', async () => {
@@ -188,3 +184,146 @@ describe('Table', () => {
     expect(screen.getByRole('checkbox', { name: 'Select Counterparty 1' })).toHaveAttribute('tabindex', '-1')
   })
 })
+
+function fakeScroller(height: number) {
+  let scrollY = 0
+  vi.spyOn(viewport, 'height').mockReturnValue(height)
+  vi.spyOn(viewport, 'top').mockImplementation(() => -scrollY)
+  vi.spyOn(viewport, 'reveal').mockImplementation((element) => {
+    const top = (Number(element.getAttribute('aria-rowindex')) - 2) * 36 - scrollY
+    if (top < 0) {
+      scrollY += top
+    } else if (top + 36 > height) {
+      scrollY += top + 36 - height
+    }
+    window.dispatchEvent(new Event('scroll'))
+  })
+  return {
+    scrollTo(top: number) {
+      scrollY = top
+      act(() => {
+        window.dispatchEvent(new Event('scroll'))
+      })
+    },
+    get scrollY() {
+      return scrollY
+    },
+  }
+}
+
+function focusedRowIndex(): string | null {
+  return document.activeElement?.getAttribute('aria-rowindex') ?? null
+}
+
+describe('virtualised Table', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('moves focus over the whole virtual set with arrows, Home, End and pages of the visible count', async () => {
+    const user = userEvent.setup()
+    const scroller = fakeScroller(360)
+    render(<Table caption="Ledger" columns={plainColumns} rows={makeRows(5000)} getRowKey={(row) => row.id} virtualised />)
+
+    await user.tab()
+    expect(focusedRowIndex()).toBe('2')
+
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
+    expect(focusedRowIndex()).toBe('5')
+
+    await user.keyboard('{End}')
+    expect(focusedRowIndex()).toBe('5001')
+    expect(scroller.scrollY).toBe(5000 * 36 - 360)
+    expect(bodyRows()).toHaveLength(10 + 4)
+
+    await user.keyboard('{Home}')
+    expect(focusedRowIndex()).toBe('2')
+    expect(scroller.scrollY).toBe(0)
+
+    await user.keyboard('{PageDown}')
+    expect(focusedRowIndex()).toBe('11')
+
+    await user.keyboard('{PageUp}')
+    expect(focusedRowIndex()).toBe('2')
+  })
+
+  it('parks focus on the sentinel when the focused row scrolls out and returns to the row on an arrow key', async () => {
+    const user = userEvent.setup()
+    const scroller = fakeScroller(360)
+    render(<Table caption="Ledger" columns={plainColumns} rows={makeRows(5000)} getRowKey={(row) => row.id} virtualised />)
+
+    await user.tab()
+    await user.keyboard('{ArrowDown}')
+    scroller.scrollTo(50_000)
+
+    const sentinel = document.querySelector('[data-sentinel]')
+    expect(document.activeElement).toBe(sentinel)
+    expect(sentinel).toHaveAttribute('tabindex', '0')
+    expect(sentinel).toHaveAttribute('aria-rowindex', '3')
+    expect(sentinel).not.toHaveAttribute('aria-hidden')
+    expect([...document.querySelectorAll('tbody tr:not([data-sentinel])')].every((row) => row.getAttribute('tabindex') === '-1')).toBe(true)
+
+    await user.keyboard('{ArrowDown}')
+    expect(focusedRowIndex()).toBe('4')
+    expect(document.activeElement).not.toBe(sentinel)
+    expect(sentinel).toHaveAttribute('aria-hidden', 'true')
+    expect(sentinel).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('returns focus from the sentinel to the row when it scrolls back into the window', async () => {
+    const user = userEvent.setup()
+    const scroller = fakeScroller(360)
+    render(<Table caption="Ledger" columns={plainColumns} rows={makeRows(5000)} getRowKey={(row) => row.id} virtualised />)
+
+    await user.tab()
+    scroller.scrollTo(50_000)
+    expect(document.activeElement).toBe(document.querySelector('[data-sentinel]'))
+
+    scroller.scrollTo(0)
+    expect(focusedRowIndex()).toBe('2')
+    expect(document.activeElement?.hasAttribute('data-sentinel')).toBe(false)
+  })
+
+  it('re-renders only the rows that enter the window when it moves', async () => {
+    const user = userEvent.setup()
+    const scroller = fakeScroller(360)
+    const cell = vi.fn((row: Entry) => row.counterparty)
+    render(
+      <Table
+        caption="Ledger"
+        columns={[{ key: 'counterparty', header: 'Counterparty', cell }]}
+        rows={makeRows(5000)}
+        getRowKey={(row) => row.id}
+        virtualised
+      />,
+    )
+    await user.tab()
+    cell.mockClear()
+
+    scroller.scrollTo(36)
+
+    expect(cell.mock.calls.map(([row]) => row.id)).toEqual(['t15'])
+  })
+
+  it('caps select all at the limit across the whole set', async () => {
+    const user = userEvent.setup()
+    const onSelectionChange = vi.fn()
+    render(
+      <Table
+        caption="Ledger"
+        columns={plainColumns}
+        rows={makeRows(5000)}
+        getRowKey={(row) => row.id}
+        virtualised
+        selectable
+        selectAllLimit={3}
+        onSelectionChange={onSelectionChange}
+      />,
+    )
+
+    const selectAll = screen.getByRole('checkbox', { name: 'Select all rows' })
+    await user.click(selectAll)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['t1', 't2', 't3']))
+  })
+})
+

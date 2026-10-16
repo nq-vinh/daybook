@@ -27,6 +27,24 @@
   margin-inline-start: auto;
 }
 
+.headerField {
+  grid-auto-flow: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.search {
+  flex: 0 1 calc(var(--table-column-lg) + var(--space-16));
+  min-inline-size: 0;
+}
+
+@media (width < 900px) {
+  .bar {
+    flex-wrap: wrap;
+    padding-block: var(--space-2);
+  }
+}
+
 .navList {
   display: flex;
   flex-wrap: wrap;

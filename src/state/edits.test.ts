@@ -156,3 +156,28 @@ describe('edits store', () => {
     expect(categoryEditEntries({ 3: 'travel', 10: 'meals' })).toEqual([[3, 'travel'], [10, 'meals']])
   })
 })
+
+describe('setCategories', () => {
+  it('applies one category to many ids in a single commit and storage write', async () => {
+    const store = await freshStore()
+    const listener = vi.fn()
+    store.subscribeEdits(listener)
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    const seeded = transaction(3).category
+    const target = seeded === 'travel' ? 'meals' : 'travel'
+    store.setCategory(9, 'rent')
+
+    setItem.mockClear()
+    listener.mockClear()
+    store.setCategories([3, 4, 9], target)
+
+    expect(setItem).toHaveBeenCalledTimes(1)
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(store.getEdits().categories[3]).toBe(target)
+    expect(store.getEdits().categories[9]).toBe(target === transaction(9).category ? undefined : target)
+
+    store.setCategories([3, 4, 9], null)
+    expect(store.getEdits().categories).toEqual({})
+    setItem.mockRestore()
+  })
+})

@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useId, useState, useSyncExternalStore } from 'react'
+import { startTransition, useDeferredValue, useEffect, useId, useState, useSyncExternalStore } from 'react'
 
 import { type LedgerClient, ledgerClient } from '../worker/client'
 import type { LedgerTotals } from '../worker/protocol'
@@ -10,10 +10,12 @@ export interface LedgerQuery {
   readonly totals: LedgerTotals
   readonly isStale: boolean
   readonly isReady: boolean
+  readonly search: string | null
 }
 
 interface LandedResult {
   readonly search: string
+  readonly categoryEdits: Edits['categories']
   readonly ids: Int32Array
   readonly totals: LedgerTotals
 }
@@ -40,8 +42,10 @@ export function useLedgerQuery(filter: FilterState, client: LedgerClient = ledge
     client.query(parseFilter(deferredSearch), channel).then(
       (result) => {
         if (current && result !== null) {
-          setLanded({ search: deferredSearch, ids: result.ids, totals: result.totals })
-          setFailure(null)
+          startTransition(() => {
+            setLanded({ search: deferredSearch, categoryEdits, ids: result.ids, totals: result.totals })
+            setFailure(null)
+          })
         }
       },
       (reason: unknown) => {
@@ -60,10 +64,13 @@ export function useLedgerQuery(filter: FilterState, client: LedgerClient = ledge
     throw failure
   }
 
+  const pending = landed === null || landed.search !== deferredSearch || landed.categoryEdits !== categoryEdits
+
   return {
     ids: landed?.ids ?? EMPTY_IDS,
     totals: landed?.totals ?? EMPTY_TOTALS,
-    isStale: landed === null || landed.search !== search || deferredSearch !== search,
+    isStale: deferredSearch !== search || pending,
     isReady: landed !== null,
+    search: landed?.search ?? null,
   }
 }

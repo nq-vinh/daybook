@@ -191,6 +191,18 @@ export function setCategory(id: number, categoryId: CategoryId | null): void {
   commit({ categories: Object.freeze(categories) })
 }
 
+export function setCategories(ids: Iterable<number>, categoryId: CategoryId | null): void {
+  const targets = new Set(ids)
+  for (const id of targets) {
+    assertTransactionId(id)
+  }
+  const kept = Object.entries(getEdits().categories).filter(([id]) => !targets.has(Number(id)))
+  const added = categoryId === null
+    ? []
+    : [...targets].filter((id) => transaction(id).category !== categoryId).map((id) => [String(id), categoryId] as const)
+  commit({ categories: Object.freeze(Object.fromEntries([...kept, ...added])) })
+}
+
 export function setNote(id: number, note: string): void {
   assertTransactionId(id)
   const current = getEdits()

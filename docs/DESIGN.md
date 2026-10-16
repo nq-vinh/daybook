@@ -33,8 +33,11 @@ Contrast is measured at runtime on `/design`; AA is the floor, adjust values rat
 | negative         | `#A33A2A` | `#E07B6C` | debits, declined, destructive                    |
 | warning          | `#9A6B00` | `#D9A441` | pending, budgets past 80 %                       |
 | border           | `#D9DBD6` | `#343834` | hairline rules                                   |
-| border-strong    | `#9DA19B` | `#5A5F59` | input borders, table header rule                 |
+| border-strong    | `#838882` | `#6A7069` | input borders, table header rule                 |
 | focus            | = accent  | = accent  | 2 px solid ring, 2 px offset, never removed      |
+| accent-hover     | `#174A30` | `#8CCFA5` | hover and active on accent surfaces              |
+| negative-hover   | `#86301F` | `#E99689` | hover and active on danger surfaces              |
+| negative-contrast| `#FFFFFF` | `#0F1A14` | text on negative                                 |
 
 `prefers-contrast: more` darkens muted text to text and thickens rules to border-strong.
 `forced-colors: active` maps roles to system colours (`Canvas`, `CanvasText`, `Highlight`, `LinkText`) and keeps focus visible through the platform ring.

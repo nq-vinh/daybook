@@ -3,6 +3,7 @@ import { navigation } from './pages/routes'
 import { RouteAnnouncer } from './router/announcer'
 import { Link } from './router/link'
 import { RouteOutlet, useRoute } from './router/router'
+import { ThemeSwitch } from './ui/ThemeSwitch/ThemeSwitch'
 
 function isCurrent(pathname: string, to: string): boolean {
   return to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`)
@@ -17,6 +18,7 @@ export function App() {
       <header className={styles.header}>
         <div className={styles.bar}>
           <Link className={styles.wordmark} to="/">Daybook</Link>
+          <ThemeSwitch className={styles.theme} />
         </div>
         <nav className={styles.nav} aria-label="Main">
           <ul className={styles.navList}>

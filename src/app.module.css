@@ -12,6 +12,7 @@
 .bar {
   display: flex;
   align-items: center;
+  gap: var(--space-4);
   min-block-size: var(--space-16);
 }
 
@@ -20,6 +21,10 @@
   font-size: var(--text-lg);
   font-weight: var(--font-weight-strong);
   text-decoration: none;
+}
+
+.theme {
+  margin-inline-start: auto;
 }
 
 .navList {

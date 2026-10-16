@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readdir, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -24,9 +25,22 @@ const html = await readFile(join(distDirectory, 'index.html'), 'utf8').catch(() 
   throw new Error('dist/index.html was not found. Run npm run build first.')
 })
 
-for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
-  if ((match[1] ?? '').trim() !== '') {
-    failures.push('dist/index.html contains an inline <script> body.')
+const deployedConfig = JSON.parse(await readFile(join(distDirectory, 'staticwebapp.config.json'), 'utf8'))
+const contentSecurityPolicy = deployedConfig.globalHeaders?.['Content-Security-Policy'] ?? ''
+const allowedScriptHashes = new Set([...contentSecurityPolicy.matchAll(/'sha256-([A-Za-z0-9+/=]+)'/g)].map((match) => match[1]))
+const inlineScripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
+  .map((match) => match[1] ?? '')
+  .filter((body) => body.trim() !== '')
+
+if (inlineScripts.length !== 1) {
+  failures.push(`dist/index.html must contain exactly one inline <script> (the theme bootstrap), found ${String(inlineScripts.length)}.`)
+}
+
+for (const body of inlineScripts) {
+  const hash = createHash('sha256').update(body).digest('base64')
+
+  if (!allowedScriptHashes.has(hash)) {
+    failures.push(`dist/index.html has an inline <script> whose hash sha256-${hash} is not in the CSP script-src.`)
   }
 }
 

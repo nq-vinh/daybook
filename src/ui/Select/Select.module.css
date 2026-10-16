@@ -1,0 +1,35 @@
+.control {
+  position: relative;
+  display: grid;
+}
+
+.select {
+  min-block-size: var(--control-height-md);
+  padding-inline: var(--space-3) calc(var(--space-3) + var(--space-4) + var(--space-2));
+  border: var(--control-border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken);
+  appearance: none;
+  cursor: pointer;
+}
+
+.select:where([aria-invalid="true"]) {
+  border-color: var(--color-negative);
+}
+
+.control:where(:has(.select:disabled)) {
+  opacity: var(--opacity-disabled);
+}
+
+.select:where(:disabled) {
+  cursor: not-allowed;
+}
+
+.chevron {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: var(--space-3);
+  margin-block: auto;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}

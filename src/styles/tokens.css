@@ -12,8 +12,11 @@
   --color-negative: light-dark(#a33a2a, #e07b6c);
   --color-warning: light-dark(#9a6b00, #d9a441);
   --color-border: light-dark(#d9dbd6, #343834);
-  --color-border-strong: light-dark(#9da19b, #5a5f59);
+  --color-border-strong: light-dark(#838882, #6a7069);
   --color-focus: var(--color-accent);
+  --color-accent-hover: light-dark(#174a30, #8ccfa5);
+  --color-negative-hover: light-dark(#86301f, #e99689);
+  --color-negative-contrast: light-dark(#fff, #0f1a14);
 
   --font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-weight-regular: 400;
@@ -53,6 +56,7 @@
 
   --duration-fast: 120ms;
   --duration-base: 200ms;
+  --duration-spin: 900ms;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
 
   --z-sticky: 10;
@@ -67,6 +71,11 @@
   --focus-ring-offset: 2px;
   --rule-width: 1px;
   --rule-width-strong: 2px;
+
+  --control-height-sm: var(--space-7);
+  --control-height-md: var(--space-9);
+  --control-border-width: 1px;
+  --opacity-disabled: 0.5;
 }
 
 :root[data-theme="light"] {
@@ -106,6 +115,9 @@
     --color-border: CanvasText;
     --color-border-strong: CanvasText;
     --color-focus: Highlight;
+    --color-accent-hover: LinkText;
+    --color-negative-hover: CanvasText;
+    --color-negative-contrast: Canvas;
   }
 }
 
@@ -113,5 +125,6 @@
   :root {
     --duration-fast: 0ms;
     --duration-base: 0ms;
+    --duration-spin: 0ms;
   }
 }

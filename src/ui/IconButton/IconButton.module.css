@@ -1,0 +1,17 @@
+.iconButton {
+  padding-inline: 0;
+}
+
+.md {
+  inline-size: var(--control-height-md);
+}
+
+.sm {
+  inline-size: var(--control-height-sm);
+}
+
+.iconButton:where([aria-pressed="true"]) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}

@@ -78,12 +78,27 @@ VAT is 0 % for revenue, interest, salaries and tax, 7 % for meals, 19 % otherwis
 Forecast: income and expense are projected separately, each future month being the mean of the last three complete months times a seasonal factor (the mean of the same calendar month in prior years divided by the overall mean, clamped to 0.5..1.5, and 1 unless both means are positive), rounded half away from zero to integer minor units, with net = income - expense.
 No seasonal factor hits the clamp for September to November 2026; forecast nets against mean monthly nets are 53,373.92, 13,677.03 and 143,327.95 EUR against 63,159.78 for Main, 39,609.89, -24,807.46 and 44,267.54 USD against 1,532.60 for Operations, and 33,120.12, -9,567.44 and 12,833.87 GBP against 5,298.78 for UK sales.
 
+## Component library
+
+`src/ui/<Name>/` holds one component per folder with its CSS Module and test; class names are joined with `cx()` from `src/ui/classes.ts`, which tolerates the `string | undefined` that CSS Modules return under `noUncheckedIndexedAccess`.
+Focus has one rule in `base.css`: `:focus-visible` draws the 2 px `--color-focus` ring at 2 px offset, `[data-focus-ring]` draws it on the element right after a focused native input (the drawn checkbox box, switch track and theme segment, whose real inputs sit transparent on top of them), and `[data-focus-within-ring]` moves it from its `[data-ring-source]` input to the wrapper (the text field well) while other controls inside keep their own ring.
+Dynamic values never use a `style` prop; they go through data attributes or custom properties written on the element through a ref.
+Button reserves its width without JS: label and spinner share one grid cell, and while loading the label, rendered once, stays in flow and in the accessibility tree with `color: transparent` while the spinner takes the variant's `--button-foreground`.
+Fields share `useFieldIds()`, `Field` and `FieldError` from `src/ui/field.tsx`: a visible label, an optional description and error joined into `aria-describedby`, `aria-invalid` while an error shows, and a polite live region that is always rendered so errors that appear on change are announced.
+NumberField is a TextField over non-negative integer minor units (at most 1e15); while focused it keeps the raw draft, validates it on every change against the locale's decimal separator and grouping (pasted currency symbols and bidi marks are stripped) and reports `null` while the draft is invalid, shows the "Enter an amount like ..." error only once a blur leaves the draft invalid and until the next valid change ("Amount is too large." shows at once), and formats with the currency on blur only when the draft is valid.
+The theme lives in `src/state/theme.ts`, a `useSyncExternalStore` store persisted under localStorage `theme` (`system`, `light`, `dark`) that writes the resolved scheme to `data-theme` on `<html>`, listens to `prefers-color-scheme` only in system mode, and follows `storage` events from other tabs.
+Stage 1d adds a resolved-scheme snapshot and hook to the theme store so `/design` can re-measure contrast live when the scheme changes.
+A one-statement inline script in `index.html` applies a stored `light` or `dark` before the stylesheet loads, allowed by its sha256 hash in the CSP; `main.tsx` then calls `initTheme()` before `createRoot`.
+Component tests live next to the components but type-check in `tsconfig.node.json` with the other tests, so the jest-dom matcher types from `tests/unit/setup.ts` stay out of the app program.
+`tests/unit/tokens-contrast.test.ts` parses the `light-dark()` colour tokens and guards the AA pairs in both themes; `/design` remains the visitor-facing measurement.
+
 ## Budgets and checks
 
 - Runtime dependencies: 2, asserted by `scripts/verify-bundle.mjs`.
 - Initial JavaScript gzip budget: 90 KB placeholder (`BUDGET_GZIP_BYTES`), replaced by the measured number after Stage 2.
 - Lighthouse: `@lhci/cli` in Stage 5; CI carries a commented placeholder step.
 - CSP source of truth is `public/staticwebapp.config.json`; `vite preview` serves its `globalHeaders`, so Playwright runs against the real header.
+- The CSP has no `'unsafe-inline'`; `script-src` allows `'self'` plus one sha256 hash for the theme bootstrap in `index.html`. `verify-bundle.mjs` fails unless `dist/index.html` has exactly one inline script and its hash is in the deployed CSP, and `source-bans.test.ts` checks the same against the source files.
 - Caching: a global `Cache-Control: no-cache` with an `/assets/*` immutable route; that the route-level header takes precedence over the global one is to be confirmed on the live site in Stage 5.
 - `verify-bundle.mjs` reads `dist/.vite/manifest.json` to measure the initial chunks, then deletes `dist/.vite` so the manifest is not deployed.
 
@@ -93,3 +108,7 @@ No seasonal factor hits the clamp for September to November 2026; forecast nets 
 - 2026-10-16, process: Stage 1 runs as four sub-stages (1a domain, 1b form primitives and theme, 1c display and overlay components, 1d design page), each its own implementer spawn with its own verify and review round, because the stage exceeds one bounded spawn.
 - 2026-10-16, pending share: about 1.1 % of transactions are pending (1,138) instead of SPEC.md's 3 %. Pending is limited to the last 14 days, which hold only about 1.9 % of rows on the recency trend; re-dating 3 % of rows into that window inflated the final month and biased the forecast, so a row already dated inside the window becomes pending with probability 0.6 instead.
 - 2026-10-16, interest VAT: interest carries `vatRate` 0 like revenue, salaries and tax, not 19 %, because interest income is VAT exempt.
+- 2026-10-16, CSP script-src gains one sha256 hash for the theme bootstrap; no unsafe-inline. Applying the stored theme from the module bundle left a light page for 1.5 s with a delayed bundle and a stored dark theme; a hashed one-statement inline script in `<head>` sets `data-theme` before first paint, and the build check pins it to exactly one script whose hash is in the CSP.
+- 2026-10-16, Switch drops `aria-checked`: SPEC.md names it, but the native checked state of `<input type="checkbox" role="switch">` already carries it and ARIA in HTML discourages `aria-checked` on checkbox inputs.
+- 2026-10-16, `--color-border-strong` changes from `#9DA19B` to `#838882` (light) and from `#5A5F59` to `#6A7069` (dark): the old values measured 2.53, 2.32 and 2.62 (light) and 2.71, 2.86 and 2.46 (dark) against surface, surface-sunken and surface-raised, below the 3:1 non-text minimum; the new ones measure 3.49, 3.19 and 3.62 (light) and 3.48, 3.67 and 3.16 (dark).
+- 2026-10-16, hover tokens are explicit colours not yet in DESIGN.md's table: `--color-accent-hover` `#174A30` / `#8CCFA5` and `--color-negative-hover` `#86301F` / `#E99689` (light / dark), and `--color-negative-contrast` `#FFFFFF` / `#0F1A14`; the guard test keeps their text pairs at 4.5:1 or more.

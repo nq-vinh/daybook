@@ -1,0 +1,98 @@
+.button {
+  --button-foreground: var(--color-text);
+
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  min-block-size: var(--control-height-md);
+  padding-inline: var(--space-4);
+  border: var(--control-border-width) solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--button-foreground);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-heading);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.sm {
+  min-block-size: var(--control-height-sm);
+  padding-inline: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.primary {
+  --button-foreground: var(--color-accent-contrast);
+
+  background: var(--color-accent);
+}
+
+.primary:where(:hover:not(:disabled, [aria-disabled="true"])) {
+  background: var(--color-accent-hover);
+}
+
+.secondary {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.secondary:where(:hover:not(:disabled, [aria-disabled="true"])) {
+  background: var(--color-surface-sunken);
+}
+
+.quiet {
+  --button-foreground: var(--color-accent);
+}
+
+.quiet:where(:hover:not(:disabled, [aria-disabled="true"])) {
+  background: var(--color-surface-sunken);
+}
+
+.danger {
+  --button-foreground: var(--color-negative-contrast);
+
+  background: var(--color-negative);
+}
+
+.danger:where(:hover:not(:disabled, [aria-disabled="true"])) {
+  background: var(--color-negative-hover);
+}
+
+.button:where(:disabled) {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+.button:where([aria-busy="true"]) {
+  cursor: progress;
+}
+
+.content,
+.spinner {
+  grid-area: 1 / 1;
+}
+
+.content {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.spinner {
+  color: var(--button-foreground);
+}
+
+.button:where([aria-busy="true"]) .content {
+  color: transparent;
+}
+
+@media (forced-colors: active) {
+  .button:where([aria-busy="true"]) .content {
+    forced-color-adjust: none;
+  }
+}

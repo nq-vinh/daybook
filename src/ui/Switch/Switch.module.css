@@ -1,0 +1,68 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.root:where(:has(:disabled)) {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+.control {
+  position: relative;
+  display: grid;
+  flex: none;
+}
+
+.input {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 1;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.track {
+  --switch-thumb-travel: var(--space-4);
+
+  display: flex;
+  align-items: center;
+  inline-size: var(--space-9);
+  block-size: var(--space-5);
+  padding-inline: calc(var(--space-1) - var(--control-border-width));
+  border: var(--control-border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.track:dir(rtl) {
+  --switch-thumb-travel: calc(-1 * var(--space-4));
+}
+
+.thumb {
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--color-text-muted);
+  transition: translate var(--duration-fast) var(--ease-out);
+}
+
+.input:where(:checked) + .track {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.input:where(:checked) + .track .track:dir(rtl) {
+  --switch-thumb-travel: calc(-1 * var(--space-4));
+}
+
+.thumb {
+  background: var(--color-accent-contrast);
+  translate: var(--switch-thumb-travel) 0;
+}

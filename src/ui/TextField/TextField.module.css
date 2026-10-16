@@ -1,0 +1,17 @@
+.input {
+  flex: 1;
+  min-inline-size: 0;
+  align-self: stretch;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.input:where([data-align="end"]) {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}

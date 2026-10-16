@@ -84,6 +84,19 @@ export default defineConfig(
     extends: [jsxA11y.flatConfigs.strict],
     rules: {
       'jsx-a11y/no-noninteractive-tabindex': ['error', { roles: ['tabpanel', 'region'] }],
+      'jsx-a11y/no-interactive-element-to-noninteractive-role': ['error', { canvas: ['img'] }],
+    },
+  },
+  {
+    files: ['src/ui/charts/CashFlowChart.tsx'],
+    rules: {
+      'jsx-a11y/no-noninteractive-tabindex': ['error', { roles: ['tabpanel', 'region', 'group'] }],
+      'jsx-a11y/no-noninteractive-element-interactions': ['error', {
+        body: ['onError', 'onLoad'],
+        iframe: ['onError', 'onLoad'],
+        img: ['onError', 'onLoad'],
+        div: ['onKeyDown', 'onFocus', 'onBlur', 'onPointerMove', 'onPointerLeave'],
+      }],
     },
   },
   {

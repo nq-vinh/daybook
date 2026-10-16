@@ -42,7 +42,7 @@ describe('DesignPage', () => {
     const nav = screen.getByRole('navigation', { name: 'Sections' })
     const headings = screen.getAllByRole('heading', { level: 2 })
 
-    expect(headings.map((heading) => heading.textContent)).toEqual(['Colour', 'Type', 'Space', 'Radius', 'Shadow', 'Motion', 'Layers', 'Components'])
+    expect(headings.map((heading) => heading.textContent)).toEqual(['Colour', 'Type', 'Space', 'Radius', 'Shadow', 'Motion', 'Layers', 'Components', 'Charts'])
 
     for (const heading of headings) {
       expect(nav.querySelector(`a[href="#${heading.id}"]`)).toHaveTextContent(heading.textContent)
@@ -52,7 +52,7 @@ describe('DesignPage', () => {
   it('gives every component in src/ui its own h3 under Components', async () => {
     const { components } = await renderLoaded()
 
-    expect(componentNames).toHaveLength(22)
+    expect(componentNames).toHaveLength(23)
 
     for (const name of componentNames) {
       const heading = document.getElementById(componentId(name))

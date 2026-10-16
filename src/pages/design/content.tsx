@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent } from 'react'
 
 import { useRoute } from '../../router/router'
+import { ChartSections, HudSection } from './charts'
 import { ControlSections } from './controls'
 import styles from './design.module.css'
 import { InteractiveSections } from './interactive'
@@ -16,6 +17,7 @@ const sections = [
   { id: 'motion', title: 'Motion' },
   { id: 'layers', title: 'Layers' },
   { id: 'components', title: 'Components' },
+  { id: 'charts', title: 'Charts' },
 ] as const
 
 export function DesignContent() {
@@ -52,7 +54,9 @@ export function DesignContent() {
         </p>
         <ControlSections />
         <InteractiveSections />
+        <HudSection />
       </Section>
+      <ChartSections />
     </>
   )
 }

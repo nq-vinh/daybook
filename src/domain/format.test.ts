@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { defaultLocale, formatDate, formatMoney, formatPercent, formatRelative, formatSignedMoney } from './format'
+import { defaultLocale, formatCompactMoney, formatDate, formatMoney, formatPercent, formatRelative, formatSignedMoney } from './format'
 import { DAY_MS, TODAY } from './world'
 
 const NBSP = ' '
@@ -8,6 +8,12 @@ const NBSP = ' '
 describe('format', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+  })
+
+  it('formats compact money for axis ticks', () => {
+    expect(formatCompactMoney(1_250_000, 'EUR', 'en-GB')).toBe('€12.5K')
+    expect(formatCompactMoney(-300_000_000, 'USD', 'en-US')).toBe('-$3M')
+    expect(formatCompactMoney(0, 'GBP', 'en-GB')).toBe('£0')
   })
 
   it('formats integer minor units as money', () => {

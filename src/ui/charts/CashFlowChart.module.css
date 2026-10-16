@@ -1,0 +1,141 @@
+.figure {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.caption {
+  font-weight: var(--font-weight-strong);
+}
+
+.summary {
+  max-inline-size: var(--prose-max-width);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.plot {
+  position: relative;
+  block-size: calc(var(--space-16) * 4);
+}
+
+.canvas {
+  forced-color-adjust: none;
+}
+
+.canvas,
+.cursor {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.cursor {
+  border-radius: var(--radius-md);
+}
+
+.crosshair,
+.anchor {
+  position: absolute;
+  pointer-events: none;
+  transition-duration: var(--duration-fast);
+  transition-property: inset-inline-start, inset-block-start, inline-size, block-size;
+  transition-timing-function: var(--ease-out);
+}
+
+.crosshair {
+  inset-block: var(--plot-top, 0) calc(100% - var(--plot-bottom, 100%));
+  inset-inline-start: var(--cursor-x, 0);
+  inline-size: var(--rule-width);
+  background: var(--color-border-strong);
+  translate: -50% 0;
+}
+
+.anchor {
+  inset-block-start: var(--bar-y, 0);
+  inset-inline-start: var(--bar-x, 0);
+  inline-size: var(--bar-width, 0);
+  block-size: var(--bar-height, 0);
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 1;
+  min-inline-size: var(--table-column-md);
+  margin: var(--space-2);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3);
+  border: var(--rule-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--text-sm);
+  pointer-events: none;
+  position-area: inline-end span-block-end;
+  position-try-fallbacks: flip-inline, block-start;
+}
+
+.tooltipMonth {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+  margin: 0 0 var(--space-1);
+  color: var(--color-text-muted);
+}
+
+.flag {
+  color: var(--color-text);
+}
+
+.values {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0 var(--space-4);
+  margin: 0;
+}
+
+.values dt {
+  color: var(--color-text-muted);
+}
+
+.values dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.values .net {
+  font-weight: var(--font-weight-strong);
+}
+
+.details summary {
+  inline-size: max-content;
+  cursor: pointer;
+}
+
+.table {
+  inline-size: 100%;
+  margin-block-start: var(--space-3);
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th,
+.table td {
+  padding-block: var(--space-1);
+  padding-inline: var(--space-2);
+  border-block-end: var(--rule-width) solid var(--color-border);
+  text-align: start;
+}
+
+.table th[scope="row"] {
+  font-weight: var(--font-weight-regular);
+}
+
+.table .number {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}

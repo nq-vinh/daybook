@@ -11,6 +11,7 @@ import {
   type FeedSettlement,
   type LedgerRequest,
   type LedgerResponse,
+  type LedgerOverview,
   type LedgerResult,
   type LedgerSeries,
 } from './protocol'
@@ -33,6 +34,7 @@ export interface LedgerClient {
   series(accountId: AccountId | null): Promise<LedgerSeries>
   cards(): Promise<readonly CardSpend[]>
   budgets(): Promise<readonly BudgetSpend[]>
+  overview(accountId: AccountId | null): Promise<LedgerOverview>
   setEdits(categories: readonly CategoryEdit[]): void
   setFeed(settled: readonly FeedSettlement[]): void
   ready(): Promise<void>
@@ -50,6 +52,7 @@ type Pending =
   | { readonly kind: 'series'; readonly resolve: (series: LedgerSeries) => void; readonly reject: (reason: Error) => void }
   | { readonly kind: 'cards'; readonly resolve: (cards: readonly CardSpend[]) => void; readonly reject: (reason: Error) => void }
   | { readonly kind: 'budgets'; readonly resolve: (budgets: readonly BudgetSpend[]) => void; readonly reject: (reason: Error) => void }
+  | { readonly kind: 'overview'; readonly resolve: (overview: LedgerOverview) => void; readonly reject: (reason: Error) => void }
 
 interface Connection {
   readonly worker: LedgerWorker
@@ -134,6 +137,13 @@ export function createLedgerClient(spawn: LedgerWorkerFactory): LedgerClient {
         }
         return
       }
+      case 'overview': {
+        const request = settle(response.requestId, 'overview')
+        if (request?.kind === 'overview') {
+          request.resolve(response.overview)
+        }
+        return
+      }
       default:
         assertNever(response)
     }
@@ -212,6 +222,13 @@ export function createLedgerClient(spawn: LedgerWorkerFactory): LedgerClient {
         const { worker } = connect()
         const requestId = register({ kind: 'budgets', resolve, reject })
         worker.post({ type: 'budgets', requestId })
+      })
+    },
+    overview(accountId) {
+      return new Promise((resolve, reject) => {
+        const { worker } = connect()
+        const requestId = register({ kind: 'overview', resolve, reject })
+        worker.post({ type: 'overview', requestId, accountId })
       })
     },
     setEdits(categories) {

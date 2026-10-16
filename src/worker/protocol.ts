@@ -38,6 +38,37 @@ export interface BudgetSpend {
   readonly projected: number
 }
 
+export interface AccountBalance {
+  readonly accountId: AccountId
+  readonly balance: number
+  readonly currency: Currency
+  readonly last30Days: readonly number[]
+}
+
+export interface CategoryShare {
+  readonly categoryId: ExpenseCategoryId
+  readonly monthToDate: number
+  readonly share: number
+}
+
+export type OverviewMonthKind = 'complete' | 'current' | 'forecast'
+
+export interface OverviewMonth {
+  readonly start: number
+  readonly income: number
+  readonly expense: number
+  readonly net: number
+  readonly kind: OverviewMonthKind
+}
+
+export interface LedgerOverview {
+  readonly balances: readonly AccountBalance[]
+  readonly topCategories: readonly CategoryShare[]
+  readonly latest: Int32Array<ArrayBuffer>
+  readonly months: readonly OverviewMonth[]
+  readonly currency: Currency
+}
+
 export type LedgerRequest =
   | { readonly type: 'query'; readonly requestId: number; readonly filter: FilterState }
   | {
@@ -52,6 +83,7 @@ export type LedgerRequest =
   | { readonly type: 'feed'; readonly settled: readonly FeedSettlement[] }
   | { readonly type: 'cards'; readonly requestId: number }
   | { readonly type: 'budgets'; readonly requestId: number }
+  | { readonly type: 'overview'; readonly requestId: number; readonly accountId: AccountId | null }
 
 export type LedgerResponse =
   | { readonly type: 'ready' }
@@ -60,6 +92,7 @@ export type LedgerResponse =
   | { readonly type: 'series'; readonly requestId: number; readonly series: LedgerSeries }
   | { readonly type: 'cards'; readonly requestId: number; readonly cards: readonly CardSpend[] }
   | { readonly type: 'budgets'; readonly requestId: number; readonly budgets: readonly BudgetSpend[] }
+  | { readonly type: 'overview'; readonly requestId: number; readonly overview: LedgerOverview }
 
 export function assertNever(value: never): never {
   throw new TypeError(`Unhandled ledger message: ${JSON.stringify(value)}`)

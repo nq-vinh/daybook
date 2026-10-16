@@ -5,7 +5,7 @@ import { setCategoryEntries } from '../state/edits'
 import { DEFAULT_FILTER } from '../state/url'
 import { deliverForTest, FEED_EVENTS, stopFeed } from '../state/feed'
 import { createLedgerClient, forwardCategoryEdits, forwardFeed, type LedgerClient, type LedgerWorkerHandlers } from './client'
-import type { BudgetSpend, CardSpend, CategoryEdit, LedgerRequest, LedgerSeries, LedgerTotals } from './protocol'
+import type { BudgetSpend, CardSpend, CategoryEdit, LedgerOverview, LedgerRequest, LedgerSeries, LedgerTotals } from './protocol'
 
 interface FakeWorker {
   readonly posted: LedgerRequest[]
@@ -133,6 +133,17 @@ describe('ledger client', () => {
     await expect(budgetsRequest).resolves.toBe(budgets)
   })
 
+  it('posts the overview scope and resolves with its response', async () => {
+    const { client, workers, current, requestIds } = harness()
+    const request = client.overview('acc-uk')
+    const overview: LedgerOverview = { balances: [], topCategories: [], latest: new Int32Array(0), months: [], currency: 'GBP' }
+
+    expect(workers.at(-1)?.posted.at(-1)).toMatchObject({ type: 'overview', accountId: 'acc-uk' })
+    current().message({ type: 'overview', requestId: requestIds('overview')[0] ?? -1, overview })
+
+    await expect(request).resolves.toBe(overview)
+  })
+
   it('posts feed settlements once connected and re-sends them to a new worker', () => {
     const { client, workers } = harness()
     client.setFeed([[7, 'booked']])
@@ -214,6 +225,7 @@ describe('forwardCategoryEdits', () => {
       series: () => Promise.reject(new Error('Series is not used here.')),
       cards: () => Promise.resolve([]),
       budgets: () => Promise.resolve([]),
+      overview: () => Promise.reject(new Error('Overview is not used here.')),
       setEdits: (categories) => {
         sent.push(categories)
       },
@@ -247,6 +259,7 @@ describe('forwardFeed', () => {
       series: () => Promise.reject(new Error('Series is not used here.')),
       cards: () => Promise.resolve([]),
       budgets: () => Promise.resolve([]),
+      overview: () => Promise.reject(new Error('Overview is not used here.')),
       setEdits: () => undefined,
       setFeed: (settled) => {
         sent.push(settled)

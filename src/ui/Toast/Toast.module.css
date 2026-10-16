@@ -8,6 +8,12 @@
   inline-size: min(var(--toast-width), calc(100vw - var(--gutter) * 2));
 }
 
+@media (width < 640px) {
+  :global(:root[data-hud-open]) .region {
+    inset-block-end: calc(var(--hud-height, 0px) + var(--space-4) + var(--space-2));
+  }
+}
+
 .toast {
   display: flex;
   align-items: start;

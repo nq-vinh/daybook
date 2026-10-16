@@ -44,6 +44,7 @@ export function fakeClient({ supersede = true, cards, budgets }: FakeClientOptio
     series: () => Promise.reject(new Error('Series is not used here.')),
     cards: () => Promise.resolve(cards ?? ZERO_CARDS),
     budgets: () => Promise.resolve(budgets ?? ZERO_BUDGETS),
+    overview: () => Promise.reject(new Error('Overview is not used here.')),
     setEdits: () => undefined,
     setFeed: () => undefined,
     ready: () => Promise.resolve(),

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 
 import styles from './app.module.css'
 import { type AccountId, ACCOUNTS } from './domain/world'
@@ -8,11 +8,35 @@ import { navigation } from './pages/routes'
 import { RouteAnnouncer } from './router/announcer'
 import { Link } from './router/link'
 import { RouteOutlet, useRoute } from './router/router'
+import { setHudVisible, useHudVisible } from './state/hud'
 import { DEFAULT_FILTER, parseFilter, serializeFilter } from './state/url'
+import { Icon } from './ui/Icon/Icon'
+import { IconButton } from './ui/IconButton/IconButton'
 import { Select } from './ui/Select/Select'
 import { TextField } from './ui/TextField/TextField'
 import { ThemeSwitch } from './ui/ThemeSwitch/ThemeSwitch'
 import { ToastRegion } from './ui/Toast/Toast'
+
+const Hud = lazy(async () => {
+  const { Hud: panel } = await import('./ui/Hud/Hud')
+  return { default: panel }
+})
+
+function HudToggle() {
+  const visible = useHudVisible()
+
+  return (
+    <IconButton
+      label="Performance"
+      pressed={visible}
+      onClick={() => {
+        setHudVisible(!visible)
+      }}
+    >
+      <Icon name="activity" />
+    </IconButton>
+  )
+}
 
 function isCurrent(pathname: string, to: string): boolean {
   return to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`)
@@ -99,6 +123,7 @@ function HeaderSearch({ onLedger, q, account, locationKey }: HeaderSearchProps) 
 export function App() {
   const { location } = useRoute()
   const filter = parseFilter(location.search)
+  const hudVisible = useHudVisible()
 
   return (
     <>
@@ -114,6 +139,7 @@ export function App() {
             locationKey={location.key}
           />
           <ThemeSwitch className={styles.theme} />
+          <HudToggle />
         </div>
         <nav className={styles.nav} aria-label="Main">
           <ul className={styles.navList}>
@@ -136,6 +162,11 @@ export function App() {
       </main>
       <RouteAnnouncer />
       <ToastRegion />
+      {hudVisible && (
+        <Suspense fallback={null}>
+          <Hud />
+        </Suspense>
+      )}
     </>
   )
 }

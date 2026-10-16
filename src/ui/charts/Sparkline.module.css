@@ -1,0 +1,6 @@
+.sparkline {
+  display: block;
+  forced-color-adjust: none;
+  inline-size: var(--sparkline-width, 120px);
+  block-size: var(--sparkline-height, 32px);
+}

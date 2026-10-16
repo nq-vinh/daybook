@@ -3,6 +3,7 @@ import { convert, RATES_PER_100_EUR, roundHalfAwayFromZero } from '../domain/fx'
 import {
   type AccountSeries,
   COMPLETE_MONTHS,
+  type MonthTotals,
   monthlySeriesByAccount,
   transaction,
   TRANSACTION_COUNT,
@@ -17,11 +18,24 @@ import {
   type CounterpartyId,
   type Currency,
   CURRENCIES,
+  DAY_MS,
   type ExpenseCategoryId,
   monthStart,
+  TODAY,
 } from '../domain/world'
 import { type FilterSort, type FilterState, isoDayEnd, isoDayStart, type SortColumn, STATUSES } from '../state/url'
-import type { BudgetSpend, CardSpend, CategoryEdit, FeedSettlement, LedgerResult, LedgerSeries } from './protocol'
+import type {
+  AccountBalance,
+  BudgetSpend,
+  CardSpend,
+  CategoryEdit,
+  CategoryShare,
+  FeedSettlement,
+  LedgerOverview,
+  LedgerResult,
+  LedgerSeries,
+  OverviewMonth,
+} from './protocol'
 
 interface SortOrder {
   readonly ids: Int32Array
@@ -52,6 +66,11 @@ const DECLINED = STATUSES.indexOf('declined')
 const SHARE_MONTHS = 3
 const MONTH_TO_DATE_START = monthStart(COMPLETE_MONTHS)
 const SHARE_START = monthStart(COMPLETE_MONTHS - SHARE_MONTHS)
+const BALANCE_DAYS = 30
+const CHART_MONTHS = 12
+const FORECAST_MONTHS = 3
+const TOP_CATEGORIES = 5
+const LATEST_COUNT = 10
 const EXPENSE_CATEGORIES = CATEGORIES.filter(
   (entry): entry is Extract<(typeof CATEGORIES)[number], { kind: 'expense' }> => entry.kind === 'expense',
 ).map((entry) => entry.id)
@@ -419,4 +438,140 @@ export function ledgerSeries(accountId: AccountId | null): LedgerSeries {
 
 export function monthEndExpense(): number {
   return forecast(ledgerSeries(null)).expense[0] ?? 0
+}
+
+export function overviewMonths(series: LedgerSeries, monthToDate: MonthTotals = series.monthToDate): OverviewMonth[] {
+  const first = COMPLETE_MONTHS - CHART_MONTHS
+  const complete = Array.from({ length: CHART_MONTHS }, (_, offset): OverviewMonth => ({
+    start: monthStart(first + offset),
+    income: series.income[first + offset] ?? 0,
+    expense: series.expense[first + offset] ?? 0,
+    net: series.net[first + offset] ?? 0,
+    kind: 'complete',
+  }))
+  const current: OverviewMonth = { start: monthStart(COMPLETE_MONTHS), ...monthToDate, kind: 'current' }
+  const ahead = forecast(series, FORECAST_MONTHS + 1)
+  const projected = Array.from({ length: FORECAST_MONTHS }, (_, offset): OverviewMonth => ({
+    start: monthStart(COMPLETE_MONTHS + 1 + offset),
+    income: ahead.income[offset + 1] ?? 0,
+    expense: ahead.expense[offset + 1] ?? 0,
+    net: ahead.net[offset + 1] ?? 0,
+    kind: 'forecast',
+  }))
+  return [...complete, current, ...projected]
+}
+
+function balanceDay(bookedAt: number): number {
+  return Math.min(BALANCE_DAYS, Math.max(1, Math.ceil(BALANCE_DAYS - (TODAY - bookedAt) / DAY_MS)))
+}
+
+export function accountBalances(index: LedgerIndex, accountId: AccountId | null): AccountBalance[] {
+  const scoped = accountId === null ? ACCOUNTS : ACCOUNTS.filter((account) => account.id === accountId)
+  const windowStart = TODAY - BALANCE_DAYS * DAY_MS
+  const bases = ACCOUNTS.map((account): number => account.openingBalance)
+  const deltas = ACCOUNTS.map(() => new Array<number>(BALANCE_DAYS + 1).fill(0))
+
+  for (let id = 0; id < index.size; id += 1) {
+    const bookedAt = index.bookedAt[id] ?? 0
+    if (bookedAt > TODAY || index.status[id] === DECLINED) {
+      continue
+    }
+    const account = index.account[id] ?? 0
+    const value = index.amountInAccount[id] ?? 0
+    const days = deltas[account]
+    if (bookedAt <= windowStart || days === undefined) {
+      bases[account] = (bases[account] ?? 0) + value
+    } else {
+      const day = balanceDay(bookedAt)
+      days[day] = (days[day] ?? 0) + value
+    }
+  }
+
+  return scoped.map((account) => {
+    const code = codeOf(ACCOUNT_CODES, account.id)
+    let running = bases[code] ?? 0
+    const last30Days = (deltas[code] ?? []).map((delta) => {
+      running += delta
+      return running
+    })
+    return { accountId: account.id, balance: running, currency: account.currency, last30Days }
+  })
+}
+
+export function currentMonthTotals(index: LedgerIndex, accountId: AccountId | null): MonthTotals {
+  const income = new Array<number>(ACCOUNTS.length).fill(0)
+  const expense = new Array<number>(ACCOUNTS.length).fill(0)
+  for (let id = 0; id < index.size; id += 1) {
+    if ((index.bookedAt[id] ?? 0) >= MONTH_TO_DATE_START && index.status[id] !== DECLINED) {
+      const account = index.account[id] ?? 0
+      const value = index.amountInAccount[id] ?? 0
+      if (value >= 0) {
+        income[account] = (income[account] ?? 0) + value
+      } else {
+        expense[account] = (expense[account] ?? 0) - value
+      }
+    }
+  }
+  const scoped = ACCOUNTS.filter((account) => accountId === null || account.id === accountId)
+  const currency: Currency = accountId === null ? 'EUR' : accountCurrency(accountId)
+  const total = (column: readonly number[]): number => scoped.reduce(
+    (sum, account) => sum + convert(column[codeOf(ACCOUNT_CODES, account.id)] ?? 0, account.currency, currency),
+    0,
+  )
+  const net = income.map((value, account) => value - (expense[account] ?? 0))
+  return { income: total(income), expense: total(expense), net: total(net) }
+}
+
+export function topCategories(index: LedgerIndex, accountId: AccountId | null): CategoryShare[] {
+  const accountCode = accountId === null ? -1 : codeOf(ACCOUNT_CODES, accountId)
+  const amounts = accountId === null ? index.amountInEur : index.amountInAccount
+  const totals = new Array<number>(CATEGORIES.length).fill(0)
+  for (let id = 0; id < index.size; id += 1) {
+    const bookedAt = index.bookedAt[id] ?? 0
+    if (
+      bookedAt >= MONTH_TO_DATE_START
+      && bookedAt <= TODAY
+      && (accountCode < 0 || index.account[id] === accountCode)
+      && isSpend(index, id)
+    ) {
+      const category = index.category[id] ?? 0
+      totals[category] = (totals[category] ?? 0) - (amounts[id] ?? 0)
+    }
+  }
+  const spent = EXPENSE_CATEGORIES.map((categoryId) => ({ categoryId, monthToDate: totals[codeOf(CATEGORY_CODES, categoryId)] ?? 0 }))
+  const total = spent.reduce((sum, entry) => sum + entry.monthToDate, 0)
+  return spent
+    .filter((entry) => entry.monthToDate > 0)
+    .sort((left, right) => right.monthToDate - left.monthToDate || left.categoryId.localeCompare(right.categoryId, 'en'))
+    .slice(0, TOP_CATEGORIES)
+    .map((entry) => ({ ...entry, share: total === 0 ? 0 : entry.monthToDate / total }))
+}
+
+export function latestIds(index: LedgerIndex, accountId: AccountId | null, limit = LATEST_COUNT): Int32Array<ArrayBuffer> {
+  const accountCode = accountId === null ? -1 : codeOf(ACCOUNT_CODES, accountId)
+  const ids = new Int32Array(limit)
+  let count = 0
+  visitInOrder(index, { column: 'bookedAt', dir: 'desc' }, (id) => {
+    if (
+      (index.bookedAt[id] ?? 0) <= TODAY
+      && index.status[id] !== DECLINED
+      && (accountCode < 0 || index.account[id] === accountCode)
+    ) {
+      ids[count] = id
+      count += 1
+    }
+    return count < limit
+  })
+  return count === limit ? ids : ids.slice(0, count)
+}
+
+export function overview(index: LedgerIndex, accountId: AccountId | null): LedgerOverview {
+  const series = ledgerSeries(accountId)
+  return {
+    balances: accountBalances(index, accountId),
+    topCategories: topCategories(index, accountId),
+    latest: latestIds(index, accountId),
+    months: overviewMonths(series, currentMonthTotals(index, accountId)),
+    currency: series.currency,
+  }
 }

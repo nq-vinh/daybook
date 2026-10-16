@@ -2,21 +2,35 @@
 
 import { beforeAll, describe, expect, it } from 'vitest'
 
+import { forecast } from '../domain/forecast'
 import { convert, RATES_PER_100_EUR } from '../domain/fx'
-import { COMPLETE_MONTHS, monthlySeriesByAccount, type Transaction, transaction, TRANSACTION_COUNT } from '../domain/transactions'
-import { accountCurrency, CARDS, CATEGORIES, COUNTERPARTIES, DAY_MS, monthStart } from '../domain/world'
+import {
+  accountAmount,
+  COMPLETE_MONTHS,
+  monthlySeriesByAccount,
+  type Transaction,
+  transaction,
+  TRANSACTION_COUNT,
+} from '../domain/transactions'
+import { accountCurrency, ACCOUNTS, CARDS, CATEGORIES, COUNTERPARTIES, DAY_MS, monthStart, TODAY } from '../domain/world'
 import { DEFAULT_FILTER, type FilterState, isoDayStart } from '../state/url'
 import {
+  accountBalances,
   applyCategoryEdits,
   applyFeedSettlements,
   budgetSpend,
   buildLedgerIndex,
   cardSpend,
   counterpartyHistory,
+  currentMonthTotals,
+  latestIds,
   type LedgerIndex,
   ledgerSeries,
   monthEndExpense,
+  overview,
+  overviewMonths,
   queryLedger,
+  topCategories,
 } from './index'
 
 let index: LedgerIndex
@@ -355,5 +369,118 @@ describe('ledgerSeries', () => {
       + convert(byAccount['acc-ops'].income[0] ?? 0, 'USD', 'EUR')
       + convert(byAccount['acc-uk'].income[0] ?? 0, 'GBP', 'EUR'),
     )
+  })
+})
+
+describe('overview', () => {
+  function balanceAt(accountId: string, instant: number): number {
+    const opening = ACCOUNTS.find((account) => account.id === accountId)?.openingBalance ?? 0
+    return rows
+      .filter((entry) => entry.accountId === accountId && entry.bookedAt <= instant)
+      .reduce((sum, entry) => sum + accountAmount(entry), opening)
+  }
+
+  it('returns balances as of today with a 31-point running balance per account', () => {
+    const balances = accountBalances(index, null)
+
+    expect(balances.map((entry) => entry.accountId)).toEqual(ACCOUNTS.map((account) => account.id))
+    for (const entry of balances) {
+      expect(entry.balance).toBe(balanceAt(entry.accountId, TODAY))
+      expect(entry.last30Days).toHaveLength(31)
+      expect(entry.last30Days[0]).toBe(balanceAt(entry.accountId, TODAY - 30 * DAY_MS))
+      expect(entry.last30Days[15]).toBe(balanceAt(entry.accountId, TODAY - 15 * DAY_MS))
+      expect(entry.last30Days[30]).toBe(entry.balance)
+    }
+    expect(accountBalances(index, 'acc-uk').map((entry) => entry.currency)).toEqual(['GBP'])
+  })
+
+  it('honours feed settlements in the balances', () => {
+    const pending = rows.find((entry) => entry.status === 'pending' && entry.accountId === 'acc-main' && entry.bookedAt <= TODAY)
+    if (pending === undefined) {
+      throw new RangeError('No pending row')
+    }
+    const before = accountBalances(index, 'acc-main')[0]?.balance ?? 0
+
+    try {
+      applyFeedSettlements(index, [[pending.id, 'declined']])
+      expect(accountBalances(index, 'acc-main')[0]?.balance).toBe(before - accountAmount(pending))
+    } finally {
+      applyFeedSettlements(index, [])
+    }
+  })
+
+  function expectedTop(accountId: string | null): [string, number][] {
+    const start = monthStart(COMPLETE_MONTHS)
+    const spent = new Map<string, number>()
+    for (const entry of rows) {
+      if ((accountId === null || entry.accountId === accountId) && entry.bookedAt >= start && entry.bookedAt <= TODAY && entry.status !== 'declined' && entry.amount < 0) {
+        const value = accountId === null ? convert(entry.amount, entry.currency, 'EUR') : accountAmount(entry)
+        spent.set(entry.category, (spent.get(entry.category) ?? 0) - value)
+      }
+    }
+    return [...spent.entries()].sort((left, right) => right[1] - left[1])
+  }
+
+  it('ranks the top five expense categories month to date in the scope currency with their share', () => {
+    const ops = expectedTop('acc-ops')
+    const total = ops.reduce((sum, [, value]) => sum + value, 0)
+    const top = topCategories(index, 'acc-ops')
+
+    expect(top.map((entry) => [entry.categoryId, entry.monthToDate])).toEqual(ops.slice(0, 5))
+    expect(top[0]?.share).toBeCloseTo((ops[0]?.[1] ?? 0) / total, 10)
+    expect(topCategories(index, null).map((entry) => [entry.categoryId, entry.monthToDate])).toEqual(expectedTop(null).slice(0, 5))
+  })
+
+  it('totals the current month to date with feed settlements, declined counting 0', () => {
+    const series = ledgerSeries('acc-main')
+    const pending = rows.find((entry) => entry.status === 'pending' && entry.accountId === 'acc-main' && entry.bookedAt >= monthStart(COMPLETE_MONTHS))
+    if (pending === undefined) {
+      throw new RangeError('No pending row this month')
+    }
+
+    expect(currentMonthTotals(index, 'acc-main')).toEqual(series.monthToDate)
+    expect(currentMonthTotals(index, null)).toEqual(ledgerSeries(null).monthToDate)
+
+    try {
+      applyFeedSettlements(index, [[pending.id, 'declined']])
+      expect(currentMonthTotals(index, 'acc-main').net).toBe(series.monthToDate.net - accountAmount(pending))
+      expect(overview(index, 'acc-main').months[12]?.net).toBe(series.monthToDate.net - accountAmount(pending))
+    } finally {
+      applyFeedSettlements(index, [])
+    }
+  })
+
+  it('returns the latest ten booked or pending ids for the scope, newest first', () => {
+    const expected = sortedIds(
+      rows.filter((entry) => entry.accountId === 'acc-main' && entry.bookedAt <= TODAY && entry.status !== 'declined'),
+      (entry) => entry.bookedAt,
+      'desc',
+    ).slice(0, 10)
+
+    expect([...latestIds(index, 'acc-main')]).toEqual(expected)
+    expect(latestIds(index, null)).toHaveLength(10)
+  })
+
+  it('builds 12 complete months, the current month to date and 3 forecast months', () => {
+    const series = ledgerSeries('acc-main')
+    const months = overviewMonths(series)
+    const ahead = forecast(series, 4)
+
+    expect(months.map((month) => month.kind)).toEqual([...Array<string>(12).fill('complete'), 'current', 'forecast', 'forecast', 'forecast'])
+    expect(months[0]?.start).toBe(monthStart(COMPLETE_MONTHS - 12))
+    expect(months[11]?.net).toBe(series.net[COMPLETE_MONTHS - 1])
+    expect(months[12]).toEqual({ start: monthStart(COMPLETE_MONTHS), ...series.monthToDate, kind: 'current' })
+    expect(months.slice(13).map((month) => month.net)).toEqual(ahead.net.slice(1))
+    expect(months[15]?.start).toBe(Date.UTC(2026, 11, 1))
+  })
+
+  it('answers in the scope display currency in one result', () => {
+    const result = overview(index, null)
+
+    expect(result.currency).toBe('EUR')
+    expect(result.balances).toHaveLength(ACCOUNTS.length)
+    expect(result.months).toHaveLength(16)
+    expect(result.latest).toHaveLength(10)
+    expect(overview(index, 'acc-ops').currency).toBe('USD')
   })
 })

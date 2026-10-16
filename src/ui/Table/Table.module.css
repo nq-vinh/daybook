@@ -61,7 +61,13 @@
   box-shadow: inset var(--rule-width-strong) 0 0 var(--color-accent);
 }
 
-.row:where(:focus-visible) {
+@media (forced-colors: active) {
+  .row:where([aria-selected="true"]) {
+    border-inline-start: var(--rule-width-strong) solid Highlight;
+  }
+}
+
+.row:where(:focus-visible, [data-force-focus]) {
   outline-offset: calc(var(--focus-ring-width) * -1);
 }
 

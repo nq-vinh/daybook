@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { closeWithoutCancelableCancel } from '../../../tests/unit/dialog'
 import { Button } from '../Button/Button'
 import { Dialog } from './Dialog'
-import styles from './Dialog.module.css'
 
 function Harness({ onClose }: { readonly onClose: () => void }) {
   const [open, setOpen] = useState(false)
@@ -43,7 +42,7 @@ describe('Dialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('opens modally, labelled by its title and described by its description, and locks scroll', async () => {
+  it('opens modally, labelled by its title and described by its description', async () => {
     const { user, opener } = setup()
 
     await user.click(opener)
@@ -51,7 +50,6 @@ describe('Dialog', () => {
     expect(dialog).toHaveAttribute('open')
     expect(dialog).toHaveAccessibleDescription('Spending stays in the ledger.')
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus()
-    expect(document.documentElement).toHaveClass(styles.scrollLock ?? 'missing')
   })
 
   it('reports Escape through onClose and returns focus to the opener', async () => {
@@ -62,7 +60,6 @@ describe('Dialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(opener).toHaveFocus()
-    expect(document.documentElement).not.toHaveClass(styles.scrollLock ?? 'missing')
   })
 
   it('closes from the open prop without calling onClose and returns focus', async () => {
@@ -83,7 +80,6 @@ describe('Dialog', () => {
     await user.keyboard('{Escape}')
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('dialog', { name: 'Confirm transfer' })).toHaveAttribute('open')
-    expect(document.documentElement).toHaveClass(styles.scrollLock ?? 'missing')
   })
 
   it('reopens after a native close that skipped cancel while the parent keeps it open', () => {
@@ -98,7 +94,6 @@ describe('Dialog', () => {
     })
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(dialog).toHaveAttribute('open')
-    expect(document.documentElement).toHaveClass(styles.scrollLock ?? 'missing')
   })
 
   it('calls onClose exactly once for an Escape whose cancel is not cancelable', () => {
@@ -113,17 +108,15 @@ describe('Dialog', () => {
     })
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(dialog).toHaveAttribute('open')
-    expect(document.documentElement).toHaveClass(styles.scrollLock ?? 'missing')
   })
 
-  it('closes and unlocks scroll when unmounted while open', async () => {
+  it('closes when unmounted while open', async () => {
     const onClose = vi.fn<() => void>()
     const user = userEvent.setup()
     const { unmount } = render(<Harness onClose={onClose} />)
 
     await user.click(screen.getByRole('button', { name: 'Delete budget' }))
     unmount()
-    expect(document.documentElement).not.toHaveClass(styles.scrollLock ?? 'missing')
     expect(onClose).not.toHaveBeenCalled()
   })
 })

@@ -82,6 +82,9 @@ export default defineConfig(
   {
     files: ['**/*.tsx'],
     extends: [jsxA11y.flatConfigs.strict],
+    rules: {
+      'jsx-a11y/no-noninteractive-tabindex': ['error', { roles: ['tabpanel', 'region'] }],
+    },
   },
   {
     files: nondeterministicSourcesAllowedIn,

@@ -83,13 +83,14 @@ table {
 }
 
 :focus-visible,
-:where(:focus-visible + [data-focus-ring]),
-:where([data-focus-within-ring]:has(> [data-ring-source]:focus-visible)) {
+[data-force-focus],
+:where(:is(:focus-visible, [data-force-focus]) + [data-focus-ring]),
+:where([data-focus-within-ring]:has(> [data-ring-source]:is(:focus-visible, [data-force-focus]))) {
   outline: var(--focus-ring-width) solid var(--color-focus);
   outline-offset: var(--focus-ring-offset);
 }
 
-:where([data-focus-within-ring]) > [data-ring-source]:focus-visible {
+:where([data-focus-within-ring]) > [data-ring-source]:is(:focus-visible, [data-force-focus]) {
   outline: none;
 }
 

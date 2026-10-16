@@ -13,7 +13,7 @@ export const routes: readonly Route[] = [
   { path: '/transactions/:id', title: 'Transaction', component: TransactionPage },
   { path: '/cards', title: 'Cards', component: CardsPage },
   { path: '/budgets', title: 'Budgets', component: BudgetsPage },
-  { path: '/design', title: 'Design', component: DesignPage },
+  { path: '/design', title: 'Design system', component: DesignPage },
 ]
 
 export const notFound: Route = { path: '*', title: 'Page not found', component: NotFoundPage }

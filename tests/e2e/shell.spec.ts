@@ -11,7 +11,7 @@ const routes = [
   { path: '/transactions/tx-1', heading: 'Transaction' },
   { path: '/cards', heading: 'Cards' },
   { path: '/budgets', heading: 'Budgets' },
-  { path: '/design', heading: 'Design' },
+  { path: '/design', heading: 'Design system' },
   { path: '/no-such-page', heading: 'Page not found' },
 ] as const
 

@@ -45,6 +45,66 @@ describe('Tabs', () => {
     expect(screen.getByRole('tab', { name: 'Year' })).toHaveAttribute('aria-selected', 'true')
   })
 
+  it('skips a disabled tab with arrows and never selects it', async () => {
+    const user = userEvent.setup()
+    const withDisabled = items.map((item) => (item.id === 'quarter' ? { ...item, disabled: true } : item))
+    render(<Tabs label="Period" items={withDisabled} defaultValue="quarter" />)
+
+    expect(screen.getByRole('tab', { name: 'This month' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Quarter' })).toBeDisabled()
+    await user.tab()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('tab', { name: 'Year' })).toHaveFocus()
+    expect(screen.getByRole('tab', { name: 'Year' })).toHaveAttribute('aria-selected', 'true')
+    await user.keyboard('{ArrowLeft}')
+    expect(screen.getByRole('tab', { name: 'This month' })).toHaveFocus()
+  })
+
+  it('selects the first enabled tab when a controlled value points at a disabled one', () => {
+    const onValueChange = vi.fn<(value: string) => void>()
+    const withDisabled = items.map((item) => (item.id === 'quarter' ? { ...item, disabled: true } : item))
+    render(<Tabs label="Period" items={withDisabled} value="quarter" onValueChange={onValueChange} />)
+
+    expect(screen.getByRole('tab', { name: 'This month' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Quarter' })).toHaveAttribute('aria-selected', 'false')
+    expect(onValueChange).not.toHaveBeenCalled()
+  })
+
+  it('keeps focus in place when every other tab is disabled', async () => {
+    const user = userEvent.setup()
+    const onlyQuarter = items.map((item) => (item.id === 'quarter' ? item : { ...item, disabled: true }))
+    render(<Tabs label="Period" items={onlyQuarter} />)
+
+    await user.tab()
+    const quarter = screen.getByRole('tab', { name: 'Quarter' })
+    expect(quarter).toHaveFocus()
+
+    for (const key of ['{ArrowRight}', '{ArrowLeft}', '{Home}', '{End}']) {
+      await user.keyboard(key)
+      expect(quarter, key).toHaveFocus()
+      expect(quarter, key).toHaveAttribute('aria-selected', 'true')
+    }
+  })
+
+  it('moves Home and End to the nearest enabled tab when an edge tab is disabled', async () => {
+    const user = userEvent.setup()
+    const edgesDisabled: TabItem[] = [
+      { id: 'month', label: 'This month', content: <p>Month summary</p>, disabled: true },
+      { id: 'quarter', label: 'Quarter', content: <p>Quarter summary</p> },
+      { id: 'half', label: 'Half year', content: <p>Half year summary</p> },
+      { id: 'year', label: 'Year', content: <p>Year summary</p>, disabled: true },
+    ]
+    render(<Tabs label="Period" items={edgesDisabled} />)
+
+    await user.tab()
+    expect(screen.getByRole('tab', { name: 'Quarter' })).toHaveFocus()
+    await user.keyboard('{End}')
+    expect(screen.getByRole('tab', { name: 'Half year' })).toHaveFocus()
+    expect(screen.getByRole('tab', { name: 'Half year' })).toHaveAttribute('aria-selected', 'true')
+    await user.keyboard('{Home}')
+    expect(screen.getByRole('tab', { name: 'Quarter' })).toHaveFocus()
+  })
+
   it('makes a panel focusable only when it has no focusable child', async () => {
     const user = userEvent.setup()
     render(<Tabs label="Period" items={items} defaultValue="quarter" />)

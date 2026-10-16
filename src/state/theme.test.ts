@@ -1,7 +1,15 @@
+import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FakeMediaQueryList } from '../../tests/unit/media-query'
-import { getThemePreference, initTheme, setThemePreference, subscribeTheme } from './theme'
+import {
+  getResolvedScheme,
+  getThemePreference,
+  initTheme,
+  setThemePreference,
+  subscribeTheme,
+  useResolvedScheme,
+} from './theme'
 
 const systemDark = new FakeMediaQueryList('(prefers-color-scheme: dark)')
 
@@ -61,5 +69,49 @@ describe('theme store', () => {
     setThemePreference('dark')
     expect(getThemePreference()).toBe('dark')
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+  })
+})
+
+describe('useResolvedScheme', () => {
+  it('follows an explicit preference', () => {
+    const { result } = renderHook(() => useResolvedScheme())
+    expect(result.current).toBe('light')
+
+    act(() => {
+      setThemePreference('dark')
+    })
+    expect(result.current).toBe('dark')
+
+    act(() => {
+      setThemePreference('light')
+    })
+    expect(result.current).toBe('light')
+  })
+
+  it('follows the system scheme in system mode', () => {
+    const { result } = renderHook(() => useResolvedScheme())
+
+    act(() => {
+      systemDark.setMatches(true)
+    })
+    expect(result.current).toBe('dark')
+  })
+
+  it('follows a theme stored by another tab', () => {
+    const { result } = renderHook(() => useResolvedScheme())
+
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'theme', newValue: 'dark' }))
+    })
+    expect(result.current).toBe('dark')
+  })
+
+  it('falls back to the system query before the theme is applied', () => {
+    delete document.documentElement.dataset.theme
+    systemDark.matches = true
+    expect(getResolvedScheme()).toBe('dark')
+
+    systemDark.matches = false
+    expect(getResolvedScheme()).toBe('light')
   })
 })

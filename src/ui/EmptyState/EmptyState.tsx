@@ -6,13 +6,13 @@ import styles from './EmptyState.module.css'
 export interface EmptyStateProps {
   readonly title: string
   readonly description: string
-  readonly headingLevel?: 2 | 3 | undefined
+  readonly headingLevel?: 2 | 3 | 4 | undefined
   readonly action?: ReactNode
   readonly className?: string | undefined
 }
 
 export function EmptyState({ title, description, headingLevel = 2, action, className }: EmptyStateProps) {
-  const Heading = headingLevel === 2 ? 'h2' : 'h3'
+  const Heading = (['h2', 'h3', 'h4'] as const)[headingLevel - 2] ?? 'h2'
 
   return (
     <div className={cx(styles.root, className)}>

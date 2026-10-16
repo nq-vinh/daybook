@@ -3,37 +3,32 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
+import { contrastBetween } from '../../src/ui/contrast'
+
 const tokensCss = readFileSync(new URL('../../src/styles/tokens.css', import.meta.url), 'utf8')
 
 type Theme = 'light' | 'dark'
 
 function token(name: string, theme: Theme): string {
-  const match = new RegExp(String.raw`--color-${name}:\s*light-dark\((#[0-9a-f]{3,6}),\s*(#[0-9a-f]{3,6})\)`, 'i').exec(tokensCss)
+  const property = name.startsWith('avatar-') ? `--${name}` : `--color-${name}`
+  const match = new RegExp(String.raw`${property}:\s*light-dark\((#[0-9a-f]{3,6}),\s*(#[0-9a-f]{3,6})\)`, 'i').exec(tokensCss)
   const value = theme === 'light' ? match?.[1] : match?.[2]
 
   if (value === undefined) {
-    throw new Error(`tokens.css has no light-dark() value for --color-${name}.`)
+    throw new Error(`tokens.css has no light-dark() value for ${property}.`)
   }
 
   return value
 }
 
-function channels(hex: string): number[] {
-  const digits = hex.slice(1)
-  const full = digits.length === 3 ? digits.replace(/./g, '$&$&') : digits
-  return [0, 2, 4].map((start) => Number.parseInt(full.slice(start, start + 2), 16) / 255)
-}
+function contrast(foreground: string, background: string): number {
+  const ratio = contrastBetween(foreground, background)
 
-function luminance(hex: string): number {
-  const [red = 0, green = 0, blue = 0] = channels(hex).map((channel) => (
-    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
-  ))
-  return 0.2126 * red + 0.7152 * green + 0.0722 * blue
-}
+  if (ratio === null) {
+    throw new Error(`Cannot measure ${foreground} on ${background}.`)
+  }
 
-function contrast(first: string, second: string): number {
-  const [lighter, darker] = [luminance(first), luminance(second)].sort((a, b) => b - a)
-  return ((lighter ?? 0) + 0.05) / ((darker ?? 0) + 0.05)
+  return ratio
 }
 
 const pairs = [
@@ -44,6 +39,7 @@ const pairs = [
   { foreground: 'text', background: 'surface-raised', minimum: 4.5 },
   { foreground: 'text', background: 'surface-sunken', minimum: 4.5 },
   { foreground: 'text-muted', background: 'surface', minimum: 4.5 },
+  { foreground: 'text-muted', background: 'surface-sunken', minimum: 4.5 },
   { foreground: 'accent-contrast', background: 'accent', minimum: 4.5 },
   { foreground: 'accent-contrast', background: 'accent-hover', minimum: 4.5 },
   { foreground: 'negative-contrast', background: 'negative', minimum: 4.5 },
@@ -58,7 +54,8 @@ const pairs = [
   { foreground: 'negative', background: 'badge-negative', minimum: 4.5 },
   { foreground: 'warning-text', background: 'badge-warning', minimum: 4.5 },
   { foreground: 'accent', background: 'badge-accent', minimum: 4.5 },
-] as const
+  ...[1, 2, 3, 4, 5, 6, 7, 8].map((hue) => ({ foreground: 'text', background: `avatar-${String(hue)}`, minimum: 4.5 })),
+]
 
 describe('token contrast', () => {
   for (const theme of ['light', 'dark'] as const) {

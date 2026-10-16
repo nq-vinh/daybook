@@ -3,22 +3,6 @@ import { useEffect, useId, useRef, useState, type ReactNode, type SyntheticEvent
 import { cx } from '../classes'
 import styles from './Dialog.module.css'
 
-let lockedDialogs = 0
-
-function lockScroll(): void {
-  lockedDialogs += 1
-  if (lockedDialogs === 1 && styles.scrollLock !== undefined) {
-    document.documentElement.classList.add(styles.scrollLock)
-  }
-}
-
-function unlockScroll(): void {
-  lockedDialogs = Math.max(0, lockedDialogs - 1)
-  if (lockedDialogs === 0 && styles.scrollLock !== undefined) {
-    document.documentElement.classList.remove(styles.scrollLock)
-  }
-}
-
 export interface DialogProps {
   readonly open: boolean
   readonly onClose: () => void
@@ -47,10 +31,8 @@ export function Dialog({ open, onClose, title, description, children, actions, c
     if (!dialog.open) {
       dialog.showModal()
     }
-    lockScroll()
 
     return () => {
-      unlockScroll()
       if (dialog.open) {
         dialog.close()
       }

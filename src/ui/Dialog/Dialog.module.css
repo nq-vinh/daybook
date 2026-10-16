@@ -1,8 +1,5 @@
-.scrollLock {
-  overflow: hidden;
-}
-
 .dialog {
+  margin: auto;
   inline-size: min(var(--dialog-width), calc(100vw - var(--gutter) * 2));
   max-block-size: calc(100dvh - var(--gutter) * 2);
   padding: var(--space-6);

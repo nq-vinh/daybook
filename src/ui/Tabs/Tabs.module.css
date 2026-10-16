@@ -11,26 +11,28 @@
 
 .tab {
   min-block-size: var(--control-height-md);
-  margin-block-end: calc(var(--rule-width) * -1);
   padding-inline: 0;
   border: none;
-  border-block-end: var(--rule-width-strong) solid transparent;
   background: transparent;
   color: var(--color-text-muted);
   font-weight: var(--font-weight-strong);
   cursor: pointer;
-  transition:
-    color var(--duration-fast) var(--ease-out),
-    border-color var(--duration-fast) var(--ease-out);
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
-.tab:where(:hover) {
+.tab:where(:hover:not(:disabled)) {
   color: var(--color-text);
 }
 
 .tab:where([aria-selected="true"]) {
-  border-block-end-color: var(--color-accent);
   color: var(--color-text);
+  text-decoration: underline var(--rule-width-strong) var(--color-accent);
+  text-underline-offset: var(--space-2);
+}
+
+.tab:where(:disabled) {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
 }
 
 .panel:where(:focus-visible) {

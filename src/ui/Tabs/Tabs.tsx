@@ -39,6 +39,7 @@ export interface TabItem {
   readonly id: string
   readonly label: string
   readonly content: ReactNode
+  readonly disabled?: boolean | undefined
 }
 
 export interface TabsProps {
@@ -57,7 +58,8 @@ export function Tabs({ label, items, value, defaultValue, onValueChange, classNa
   const panelElements = useElementMap<HTMLDivElement>()
 
   const requested = value ?? uncontrolled
-  const selected = items.some((item) => item.id === requested) ? requested : items[0]?.id
+  const enabled = items.filter((item) => item.disabled !== true)
+  const selected = enabled.some((item) => item.id === requested) ? requested : enabled[0]?.id
 
   useEffect(() => {
     const panel = selected === undefined ? undefined : panelElements.get(selected)
@@ -95,7 +97,7 @@ export function Tabs({ label, items, value, defaultValue, onValueChange, classNa
 
     if (move !== undefined) {
       event.preventDefault()
-      select(items[rovingIndex(items, index, move, { wrap: true })])
+      select(items[rovingIndex(items, index, move, { wrap: true, isDisabled: (item) => item.disabled === true })])
     }
   }
 
@@ -116,6 +118,7 @@ export function Tabs({ label, items, value, defaultValue, onValueChange, classNa
               aria-selected={isSelected}
               aria-controls={`${baseId}-panel-${item.id}`}
               tabIndex={isSelected ? 0 : -1}
+              disabled={item.disabled}
               onClick={() => {
                 select(item)
               }}

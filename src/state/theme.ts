@@ -4,6 +4,8 @@ const THEME_PREFERENCES = ['system', 'light', 'dark'] as const
 
 export type ThemePreference = (typeof THEME_PREFERENCES)[number]
 
+export type ResolvedScheme = 'light' | 'dark'
+
 const STORAGE_KEY = 'theme'
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
@@ -92,4 +94,18 @@ export function setThemePreference(next: ThemePreference): void {
 
 export function useThemePreference(): ThemePreference {
   return useSyncExternalStore(subscribeTheme, getThemePreference)
+}
+
+export function getResolvedScheme(): ResolvedScheme {
+  const applied = document.documentElement.dataset.theme
+
+  if (applied === 'light' || applied === 'dark') {
+    return applied
+  }
+
+  return typeof window.matchMedia === 'function' && window.matchMedia(DARK_QUERY).matches ? 'dark' : 'light'
+}
+
+export function useResolvedScheme(): ResolvedScheme {
+  return useSyncExternalStore(subscribeTheme, getResolvedScheme)
 }

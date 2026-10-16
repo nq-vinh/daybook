@@ -25,4 +25,10 @@ describe('EmptyState', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'No budgets yet' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create budget' })).toBeInTheDocument()
   })
+
+  it('renders an h4 when nested under an h3', () => {
+    render(<EmptyState headingLevel={4} title="No rules yet" description="Add a rule to categorise new transactions." />)
+
+    expect(screen.getByRole('heading', { level: 4, name: 'No rules yet' })).toBeInTheDocument()
+  })
 })

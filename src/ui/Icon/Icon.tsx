@@ -13,6 +13,21 @@ const paths = {
   moon: ['M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z'],
   monitor: ['M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z', 'M8 21h8M12 17v4'],
   spinner: ['M21 12a9 9 0 1 1-6.22-8.56'],
+  close: ['M18 6 6 18', 'M6 6l12 12'],
+  'more-horizontal': [
+    'M12 11a1 1 0 1 0 0 2 1 1 0 1 0 0-2z',
+    'M19 11a1 1 0 1 0 0 2 1 1 0 1 0 0-2z',
+    'M5 11a1 1 0 1 0 0 2 1 1 0 1 0 0-2z',
+  ],
+  'arrow-up': ['M12 19V5', 'M5 12l7-7 7 7'],
+  'arrow-down': ['M12 5v14', 'M19 12l-7 7-7-7'],
+  info: ['M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z', 'M12 16v-4', 'M12 8h.01'],
+  'check-circle': ['M22 11.08V12a10 10 0 1 1-5.93-9.14', 'M22 4 12 14.01l-3-3'],
+  alert: [
+    'M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z',
+    'M12 9v4',
+    'M12 17h.01',
+  ],
 } as const satisfies Record<string, readonly string[]>
 
 export type IconName = keyof typeof paths

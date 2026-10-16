@@ -1,0 +1,49 @@
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--color-surface-raised) 70%, transparent) 50%,
+      transparent 100%
+    )
+    var(--color-surface-sunken);
+  background-repeat: no-repeat;
+  background-size: 200% 100%;
+  animation: shimmer var(--duration-shimmer) linear infinite;
+}
+
+.block {
+  inline-size: 100%;
+  block-size: var(--space-16);
+}
+
+.text {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.line {
+  block-size: 1em;
+}
+
+.line:where(:last-child:not(:first-child)) {
+  inline-size: 60%;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 150% 0;
+  }
+
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@media (forced-colors: active) {
+  .skeleton {
+    border: var(--rule-width) solid CanvasText;
+  }
+}

@@ -4,6 +4,7 @@ import { RouteAnnouncer } from './router/announcer'
 import { Link } from './router/link'
 import { RouteOutlet, useRoute } from './router/router'
 import { ThemeSwitch } from './ui/ThemeSwitch/ThemeSwitch'
+import { ToastRegion } from './ui/Toast/Toast'
 
 function isCurrent(pathname: string, to: string): boolean {
   return to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`)
@@ -40,7 +41,7 @@ export function App() {
         <RouteOutlet />
       </main>
       <RouteAnnouncer />
-      <section className={styles.toasts} aria-label="Notifications" aria-live="polite" />
+      <ToastRegion />
     </>
   )
 }

@@ -1,0 +1,59 @@
+.root {
+  --progress-fill: var(--color-accent);
+
+  display: grid;
+  gap: var(--space-1);
+}
+
+.root:where([data-state="warning"]) {
+  --progress-fill: var(--color-warning);
+}
+
+.root:where([data-state="over"]) {
+  --progress-fill: var(--color-negative);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.label {
+  font-weight: var(--font-weight-strong);
+}
+
+.value {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.meter {
+  display: block;
+  inline-size: 100%;
+  block-size: var(--space-2);
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  appearance: none;
+}
+
+.meter::-webkit-meter-bar {
+  block-size: var(--space-2);
+  border: var(--rule-width) solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+}
+
+.meter::-webkit-meter-optimum-value,
+.meter::-webkit-meter-suboptimum-value,
+.meter::-webkit-meter-even-less-good-value {
+  border-radius: var(--radius-full);
+  background: var(--progress-fill);
+}
+
+.meter::-moz-meter-bar {
+  border-radius: var(--radius-full);
+  background: var(--progress-fill);
+}

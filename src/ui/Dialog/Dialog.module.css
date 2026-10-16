@@ -1,0 +1,59 @@
+.scrollLock {
+  overflow: hidden;
+}
+
+.dialog {
+  inline-size: min(var(--dialog-width), calc(100vw - var(--gutter) * 2));
+  max-block-size: calc(100dvh - var(--gutter) * 2);
+  padding: var(--space-6);
+  border: var(--rule-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--shadow-raised);
+  opacity: 1;
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    display var(--duration-base) allow-discrete,
+    overlay var(--duration-base) allow-discrete;
+}
+
+.dialog:where(:not([open])) {
+  opacity: 0;
+}
+
+.dialog::backdrop {
+  background: var(--color-backdrop);
+}
+
+@starting-style {
+  .dialog:where([open]) {
+    opacity: 0;
+  }
+}
+
+.header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.title {
+  font-size: var(--text-xl);
+  letter-spacing: normal;
+}
+
+.description {
+  color: var(--color-text-muted);
+}
+
+.body {
+  margin-block-start: var(--space-4);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-block-start: var(--space-6);
+}

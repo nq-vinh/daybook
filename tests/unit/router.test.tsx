@@ -21,6 +21,16 @@ function clickDefaultPrevented(element: HTMLElement, init: MouseEventInit = {}):
   return defaultPrevented
 }
 
+function announcer(): HTMLElement {
+  const region = screen.getAllByRole('status').find((element) => !element.hasAttribute('aria-label'))
+
+  if (region === undefined) {
+    throw new Error('The route announcer is not rendered.')
+  }
+
+  return region
+}
+
 function renderApp() {
   return render(
     <RouterProvider routes={routes} notFound={notFound}>
@@ -82,7 +92,7 @@ describe('router', () => {
 
     await user.click(screen.getByRole('link', { name: 'Budgets' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('Budgets')
+    expect(announcer()).toHaveTextContent('Budgets')
   })
 
   it('leaves modified and non-primary clicks to the browser', () => {
@@ -170,7 +180,7 @@ describe('router', () => {
       })
 
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Budgets')
-      expect(screen.getByRole('status')).toHaveTextContent('Budgets')
+      expect(announcer()).toHaveTextContent('Budgets')
 
       expect(cardsKey).toMatch(/^\d+$/)
       expect(window.sessionStorage.getItem('daybook:scroll')).not.toContain(`["${cardsKey}",`)
@@ -201,7 +211,7 @@ describe('router', () => {
     })
     expect(window.location.pathname).toBe('/')
     expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
-    expect(screen.getByRole('status')).toHaveTextContent('Overview')
+    expect(announcer()).toHaveTextContent('Overview')
   })
 
   it('replaces the current entry when asked', () => {
@@ -223,12 +233,12 @@ describe('router', () => {
     act(() => {
       navigate('/transactions/2')
     })
-    const first = screen.getByRole('status').firstElementChild
+    const first = announcer().firstElementChild
 
     act(() => {
       navigate('/transactions/3')
     })
-    const second = screen.getByRole('status').firstElementChild
+    const second = announcer().firstElementChild
 
     expect(second).toHaveTextContent('Transaction')
     expect(second).not.toBe(first)
@@ -244,7 +254,7 @@ describe('router', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
     expect(scrollTo).toHaveBeenLastCalledWith(0, 0)
 
-    const announcement = screen.getByRole('status').firstElementChild
+    const announcement = announcer().firstElementChild
     const filterLink = screen.getByRole('link', { name: 'Overview' })
     filterLink.focus()
     scrollTo.mockClear()
@@ -256,7 +266,7 @@ describe('router', () => {
     expect(window.location.search).toBe('?q=rent')
     expect(filterLink).toHaveFocus()
     expect(scrollTo).not.toHaveBeenCalled()
-    expect(screen.getByRole('status').firstElementChild).toBe(announcement)
+    expect(announcer().firstElementChild).toBe(announcement)
   })
 
   it('renders the not-found page for unknown paths', () => {

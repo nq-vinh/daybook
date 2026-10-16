@@ -60,9 +60,3 @@
   view-transition-name: main;
 }
 
-.toasts {
-  position: fixed;
-  inset-block-end: var(--space-6);
-  inset-inline-end: var(--gutter);
-  z-index: var(--z-toast);
-}

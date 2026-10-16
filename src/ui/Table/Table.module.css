@@ -1,0 +1,83 @@
+.table {
+  inline-size: 100%;
+}
+
+.caption {
+  padding-block-end: var(--space-2);
+  font-weight: var(--font-weight-strong);
+  text-align: start;
+}
+
+.header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--z-sticky);
+  block-size: var(--table-row-height);
+  padding-inline: var(--space-3);
+  border-block-end: var(--rule-width) solid var(--color-border-strong);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-strong);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.header:where([data-width="sm"]) {
+  inline-size: var(--table-column-sm);
+}
+
+.header:where([data-width="md"]) {
+  inline-size: var(--table-column-md);
+}
+
+.header:where([data-width="lg"]) {
+  inline-size: var(--table-column-lg);
+}
+
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+}
+
+.sort:where(:hover) {
+  color: var(--color-text);
+}
+
+.row {
+  block-size: var(--table-row-height);
+  border-block-end: var(--rule-width) solid var(--color-border);
+}
+
+.row:where([aria-selected="true"]) {
+  background: var(--color-surface-sunken);
+  box-shadow: inset var(--rule-width-strong) 0 0 var(--color-accent);
+}
+
+.row:where(:focus-visible) {
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
+.row > td {
+  padding-inline: var(--space-3);
+}
+
+.select {
+  inline-size: var(--space-10);
+}
+
+.end,
+.numeric {
+  text-align: end;
+}
+
+.header:where(.end, .numeric) .sort {
+  flex-direction: row-reverse;
+}

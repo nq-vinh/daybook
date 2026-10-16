@@ -8,9 +8,10 @@ import styles from './Checkbox.module.css'
 export interface CheckboxProps extends Omit<ComponentPropsWithRef<'input'>, 'type' | 'children'> {
   readonly label: string
   readonly indeterminate?: boolean | undefined
+  readonly hideLabel?: boolean | undefined
 }
 
-export function Checkbox({ label, indeterminate = false, className, ref, ...rest }: CheckboxProps) {
+export function Checkbox({ label, indeterminate = false, hideLabel = false, className, ref, ...rest }: CheckboxProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   useLayoutEffect(() => {
@@ -32,7 +33,7 @@ export function Checkbox({ label, indeterminate = false, className, ref, ...rest
           <Icon name="check" className={styles.check} />
         </span>
       </span>
-      <span>{label}</span>
+      <span className={hideLabel ? 'visually-hidden' : undefined}>{label}</span>
     </label>
   )
 }

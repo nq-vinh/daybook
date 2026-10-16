@@ -71,4 +71,11 @@ describe('Checkbox', () => {
     expect(checkbox).toBeDisabled()
     expect(checkbox).not.toBeChecked()
   })
+
+  it('keeps the accessible name when the label is visually hidden', () => {
+    render(<Checkbox label="Select all rows" hideLabel />)
+
+    expect(screen.getByRole('checkbox', { name: 'Select all rows' })).toBeInTheDocument()
+    expect(screen.getByText('Select all rows')).toHaveClass('visually-hidden')
+  })
 })

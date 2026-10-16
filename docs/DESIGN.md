@@ -61,7 +61,7 @@ Never: all-caps labels, tracked-out eyebrows, a single accented word in a headin
 4 px scale: `--space-1` 4 through `--space-10` 40, plus `--space-12` 48 and `--space-16` 64.
 Radius: `--radius-sm` 2 px for controls, `--radius-md` 6 px for floating layers, `--radius-full` for avatars and badges. The ledger and sections have no radius.
 Shadow: only floating layers get one (`--shadow-raised`); sections never float.
-Motion: `--duration-fast` 120 ms, `--duration-base` 200 ms, `--ease-out` cubic-bezier(0.2, 0, 0, 1). `prefers-reduced-motion` sets both durations to 0 ms.
+Motion: `--duration-fast` 120 ms, `--duration-base` 200 ms, `--ease-out` cubic-bezier(0.2, 0, 0, 1). `prefers-reduced-motion` sets every duration and delay token (fast, base, shimmer, tooltip delay) to 0 ms.
 Z-index: `--z-sticky` 10, `--z-popover` 20, `--z-dialog` 30, `--z-toast` 40.
 
 ### Layout
@@ -73,7 +73,7 @@ Z-index: `--z-sticky` 10, `--z-popover` 20, `--z-dialog` 30, `--z-toast` 40.
 +------------------------------------------------------------------+
 | h1 Overview                                                      |
 |                                                                  |
-| Main EUR          Operating USD        Payroll EUR               |  <- stat tiles: rule above, number large, label below
+| Main EUR          Operating USD        Payroll EUR               |  <- stat tiles: rule above, label, then the number large
 | 48,210.55         12,090.10            9,400.00                  |
 | ~~sparkline~~     ~~sparkline~~        ~~sparkline~~             |
 | -----------------------------------------------------------------|
@@ -106,6 +106,7 @@ A feed event that inserts a row paints it accent at 12 % alpha and fades over `-
 ### Motion policy
 
 No entrance animation on load. Motion only answers an action: popover open, toast arrival, feed row arrival, optimistic state change.
+One ambient exception: the skeleton shimmer while data is pending, because it signals work in progress rather than decorating; it stops under reduced motion.
 View transitions on route change are a 120 ms cross-fade of `main` only; disabled under reduced motion.
 
 ### Words

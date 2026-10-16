@@ -17,6 +17,22 @@
   --color-accent-hover: light-dark(#174a30, #8ccfa5);
   --color-negative-hover: light-dark(#86301f, #e99689);
   --color-negative-contrast: light-dark(#fff, #0f1a14);
+  --color-warning-text: light-dark(#6e4c00, #d9a441);
+  --color-badge-neutral: light-dark(#ebece7, #262a26);
+  --color-badge-positive: light-dark(#e2efe6, #1c3125);
+  --color-badge-negative: light-dark(#f7e4e0, #3a221e);
+  --color-badge-warning: light-dark(#f6ecd2, #362b14);
+  --color-badge-accent: light-dark(#e0ece4, #1b3125);
+  --color-backdrop: light-dark(rgb(21 24 26 / 0.4), rgb(0 0 0 / 0.6));
+
+  --avatar-1: light-dark(#d7e8dc, #24402f);
+  --avatar-2: light-dark(#d5e6e6, #1f3d3e);
+  --avatar-3: light-dark(#d6e2ef, #23354a);
+  --avatar-4: light-dark(#dfdcef, #312f4d);
+  --avatar-5: light-dark(#ecdbe6, #432c3d);
+  --avatar-6: light-dark(#f1ddd5, #4a3027);
+  --avatar-7: light-dark(#efe5cc, #463c22);
+  --avatar-8: light-dark(#e2e6d2, #363d24);
 
   --font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-weight-regular: 400;
@@ -57,11 +73,11 @@
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --duration-spin: 900ms;
+  --duration-shimmer: 1400ms;
+  --delay-tooltip: 300ms;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
 
   --z-sticky: 10;
-  --z-popover: 20;
-  --z-dialog: 30;
   --z-toast: 40;
 
   --content-max-width: 1280px;
@@ -76,6 +92,18 @@
   --control-height-md: var(--space-9);
   --control-border-width: 1px;
   --opacity-disabled: 0.5;
+
+  --popover-min-width: 180px;
+  --popover-max-width: 320px;
+  --tooltip-max-width: 240px;
+  --dialog-width: 480px;
+  --toast-width: 360px;
+  --table-row-height: var(--space-9);
+  --table-column-sm: 96px;
+  --table-column-md: 160px;
+  --table-column-lg: 240px;
+  --avatar-size-sm: var(--space-6);
+  --avatar-size-md: var(--space-8);
 }
 
 :root[data-theme="light"] {
@@ -118,6 +146,20 @@
     --color-accent-hover: LinkText;
     --color-negative-hover: CanvasText;
     --color-negative-contrast: Canvas;
+    --color-warning-text: CanvasText;
+    --color-badge-neutral: Canvas;
+    --color-badge-positive: Canvas;
+    --color-badge-negative: Canvas;
+    --color-badge-warning: Canvas;
+    --color-badge-accent: Canvas;
+    --avatar-1: Canvas;
+    --avatar-2: Canvas;
+    --avatar-3: Canvas;
+    --avatar-4: Canvas;
+    --avatar-5: Canvas;
+    --avatar-6: Canvas;
+    --avatar-7: Canvas;
+    --avatar-8: Canvas;
   }
 }
 
@@ -126,5 +168,7 @@
     --duration-fast: 0ms;
     --duration-base: 0ms;
     --duration-spin: 0ms;
+    --duration-shimmer: 0ms;
+    --delay-tooltip: 0ms;
   }
 }

@@ -1,0 +1,38 @@
+.tabs {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.list {
+  display: flex;
+  gap: var(--space-4);
+  border-block-end: var(--rule-width) solid var(--color-border);
+}
+
+.tab {
+  min-block-size: var(--control-height-md);
+  margin-block-end: calc(var(--rule-width) * -1);
+  padding-inline: 0;
+  border: none;
+  border-block-end: var(--rule-width-strong) solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-strong);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.tab:where(:hover) {
+  color: var(--color-text);
+}
+
+.tab:where([aria-selected="true"]) {
+  border-block-end-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.panel:where(:focus-visible) {
+  outline-offset: var(--focus-ring-offset);
+}

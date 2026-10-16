@@ -1,0 +1,56 @@
+.avatar {
+  --avatar-background: var(--avatar-1);
+  --avatar-size: var(--avatar-size-md);
+
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: var(--avatar-size);
+  block-size: var(--avatar-size);
+  border: var(--rule-width) solid transparent;
+  border-radius: var(--radius-full);
+  background: var(--avatar-background);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-strong);
+  line-height: 1;
+  user-select: none;
+}
+
+.sm {
+  --avatar-size: var(--avatar-size-sm);
+
+  font-size: var(--text-xs);
+}
+
+.avatar:where([data-hue="1"]) {
+  --avatar-background: var(--avatar-1);
+}
+
+.avatar:where([data-hue="2"]) {
+  --avatar-background: var(--avatar-2);
+}
+
+.avatar:where([data-hue="3"]) {
+  --avatar-background: var(--avatar-3);
+}
+
+.avatar:where([data-hue="4"]) {
+  --avatar-background: var(--avatar-4);
+}
+
+.avatar:where([data-hue="5"]) {
+  --avatar-background: var(--avatar-5);
+}
+
+.avatar:where([data-hue="6"]) {
+  --avatar-background: var(--avatar-6);
+}
+
+.avatar:where([data-hue="7"]) {
+  --avatar-background: var(--avatar-7);
+}
+
+.avatar:where([data-hue="8"]) {
+  --avatar-background: var(--avatar-8);
+}

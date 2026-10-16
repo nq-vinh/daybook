@@ -52,6 +52,12 @@ const pairs = [
   { foreground: 'negative', background: 'surface', minimum: 4.5 },
   { foreground: 'warning', background: 'surface', minimum: 4.5 },
   { foreground: 'accent', background: 'surface', minimum: 4.5 },
+  { foreground: 'warning-text', background: 'surface', minimum: 4.5 },
+  { foreground: 'text-muted', background: 'badge-neutral', minimum: 4.5 },
+  { foreground: 'positive', background: 'badge-positive', minimum: 4.5 },
+  { foreground: 'negative', background: 'badge-negative', minimum: 4.5 },
+  { foreground: 'warning-text', background: 'badge-warning', minimum: 4.5 },
+  { foreground: 'accent', background: 'badge-accent', minimum: 4.5 },
 ] as const
 
 describe('token contrast', () => {

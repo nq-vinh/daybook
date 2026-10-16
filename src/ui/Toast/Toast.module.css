@@ -1,0 +1,51 @@
+.region {
+  position: fixed;
+  inset-block-end: var(--space-6);
+  inset-inline-end: var(--gutter);
+  z-index: var(--z-toast);
+  display: grid;
+  gap: var(--space-2);
+  inline-size: min(var(--toast-width), calc(100vw - var(--gutter) * 2));
+}
+
+.toast {
+  display: flex;
+  align-items: start;
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4) var(--space-2);
+  border: var(--rule-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--shadow-raised);
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    translate var(--duration-base) var(--ease-out);
+}
+
+@starting-style {
+  .toast {
+    opacity: 0;
+    translate: 0 var(--space-2);
+  }
+}
+
+.text {
+  display: grid;
+  flex: 1;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  padding-block-start: var(--space-1);
+}
+
+.title {
+  font-weight: var(--font-weight-strong);
+}
+
+.description {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}

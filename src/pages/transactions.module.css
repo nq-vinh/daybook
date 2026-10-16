@@ -137,6 +137,7 @@
 
 .total > dd {
   overflow: hidden;
+  block-size: 1lh;
   margin: 0;
   font-size: var(--text-xl);
   font-variant-numeric: tabular-nums;

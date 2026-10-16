@@ -21,6 +21,10 @@ export function formatMoney(minor: number, currency: Currency, locale = defaultL
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(minor / 100)
 }
 
+export function formatSignedMoney(minor: number, currency: Currency, locale = defaultLocale()): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency, signDisplay: 'exceptZero' }).format(minor / 100)
+}
+
 export function formatDate(
   epochMs: number,
   locale = defaultLocale(),

@@ -15,6 +15,7 @@ import type { TableRowProps } from '../ui/Table/TableRow'
 import type { LedgerResult } from '../worker/protocol'
 import { notFound, routes } from './routes'
 import styles from './transactions.module.css'
+import cellStyles from './transactions/cells.module.css'
 
 const profile = vi.hoisted(() => ({ commits: { sidebar: 0, totals: 0, ledger: 0 }, rows: 0 }))
 
@@ -189,6 +190,27 @@ describe('TransactionsPage', () => {
     expect(screen.getByText('1 active')).toBeInTheDocument()
   })
 
+  it('commits nothing in the ledger when a re-query changes only the totals', async () => {
+    await renderLedger('', result(40))
+    const posted = calls.length
+
+    act(() => {
+      setCategories([TRANSACTION_COUNT - 1], 'travel')
+    })
+    await waitFor(() => {
+      expect(calls).toHaveLength(posted + 1)
+    })
+    resetProfile()
+
+    const same = result(40)
+    await respond(latestCall(), { ...same, totals: { ...same.totals, debits: 99_999 } })
+
+    expect(profile.commits.ledger).toBe(0)
+    expect(profile.rows).toBe(0)
+    expect(profile.commits.totals).toBeGreaterThan(0)
+    expect(screen.getByText('Debits', { selector: 'dt' }).parentElement).toHaveTextContent(formatMoney(99_999, 'EUR'))
+  })
+
   it('pushes for filter changes and at the start and end of a search session, replacing while the search changes', async () => {
     const user = await renderLedger()
     const field = screen.getByRole('searchbox', { name: 'Search transactions' })
@@ -332,7 +354,7 @@ describe('TransactionsPage', () => {
     const { amount, currency } = transaction(debit)
     expect(within(debitRow ?? document.body).getByText('−').parentElement).toHaveTextContent(`−${formatMoney(-amount, currency)}`)
     expect(within(pendingRow ?? document.body).getByText('Pending')).toBeInTheDocument()
-    const pendingAmount = [...(pendingRow ?? document.body).querySelectorAll('td')].find((cell) => cell.querySelector(`.${styles.pending ?? ''}`) !== null)
+    const pendingAmount = [...(pendingRow ?? document.body).querySelectorAll('td')].find((cell) => cell.querySelector(`.${cellStyles.pending ?? ''}`) !== null)
     expect(pendingAmount).toBeDefined()
     expect(within(declinedRow ?? document.body).getByText('Declined')).toBeInTheDocument()
   })

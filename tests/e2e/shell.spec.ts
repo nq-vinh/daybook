@@ -8,7 +8,7 @@ const announcer = (page: Page) => page.locator('p[role="status"]')
 const routes = [
   { path: '/', heading: 'Overview' },
   { path: '/transactions', heading: 'Transactions' },
-  { path: '/transactions/tx-1', heading: 'Transaction' },
+  { path: '/transactions/1', heading: 'Transaction' },
   { path: '/cards', heading: 'Cards' },
   { path: '/budgets', heading: 'Budgets' },
   { path: '/design', heading: 'Design system' },

@@ -94,7 +94,7 @@ describe('Table', () => {
 
   it('moves roving focus with arrows, Home, End and pages of ten', async () => {
     const user = userEvent.setup()
-    render(<Table caption="Transactions" columns={plainColumns} rows={makeRows(25)} getRowKey={(row) => row.id} />)
+    render(<Table caption="Transactions" columns={plainColumns} rows={makeRows(25)} getRowKey={(row) => row.id} rowFocus />)
 
     expect(bodyRows().map((row) => row.tabIndex).filter((index) => index === 0)).toHaveLength(1)
     await user.tab()
@@ -121,19 +121,19 @@ describe('Table', () => {
 
   it('keeps focus on the same row key when rows re-render with fresh objects', async () => {
     const user = userEvent.setup()
-    const { rerender } = render(<Table caption="Transactions" columns={plainColumns} rows={makeRows(5)} getRowKey={(row) => row.id} />)
+    const { rerender } = render(<Table caption="Transactions" columns={plainColumns} rows={makeRows(5)} getRowKey={(row) => row.id} rowFocus />)
 
     await user.tab()
     await user.keyboard('{ArrowDown}{ArrowDown}')
     const focused = bodyRows()[2]
     expect(focused).toHaveFocus()
 
-    rerender(<Table caption="Transactions" columns={plainColumns} rows={makeRows(5)} getRowKey={(row) => row.id} />)
+    rerender(<Table caption="Transactions" columns={plainColumns} rows={makeRows(5)} getRowKey={(row) => row.id} rowFocus />)
     expect(bodyRows()[2]).toBe(focused)
     expect(bodyRows()[2]).toHaveFocus()
     expect(bodyRows()[2]).toHaveAttribute('tabindex', '0')
 
-    rerender(<Table caption="Transactions" columns={plainColumns} rows={[...makeRows(6)].reverse()} getRowKey={(row) => row.id} />)
+    rerender(<Table caption="Transactions" columns={plainColumns} rows={[...makeRows(6)].reverse()} getRowKey={(row) => row.id} rowFocus />)
     expect(screen.getByRole('row', { name: /Counterparty 3/ })).toHaveFocus()
     expect(screen.getByRole('row', { name: /Counterparty 3/ })).toHaveAttribute('tabindex', '0')
     await user.keyboard('{ArrowDown}')
@@ -155,6 +155,7 @@ describe('Table', () => {
           selectable
           selectedKeys={selected}
           onSelectionChange={setSelected}
+          rowFocus
         />
       )
     }
@@ -247,24 +248,6 @@ describe('virtualised Table', () => {
     expect(focusedRowIndex()).toBe('2')
   })
 
-  it('does not park focus on the sentinel when virtualisation switches on', () => {
-    const scroller = fakeScroller(360)
-    const rows = makeRows(200)
-    const { rerender } = render(<Table caption="Ledger" columns={plainColumns} rows={rows} getRowKey={(row) => row.id} />)
-    const first = bodyRows()[0]
-    act(() => {
-      first?.focus()
-    })
-    expect(first).toHaveFocus()
-    scroller.scrollTo(3_000)
-
-    rerender(<Table caption="Ledger" columns={plainColumns} rows={rows} getRowKey={(row) => row.id} virtualised />)
-
-    const sentinel = document.querySelector('tr[data-sentinel]')
-    expect(sentinel).not.toBeNull()
-    expect(sentinel).not.toHaveFocus()
-  })
-
   it('parks focus on the sentinel when the focused row scrolls out and returns to the row on an arrow key', async () => {
     const user = userEvent.setup()
     const scroller = fakeScroller(360)
@@ -343,5 +326,93 @@ describe('virtualised Table', () => {
     await user.click(selectAll)
     expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['t1', 't2', 't3']))
   })
-})
 
+  it('activates the focused row on Enter without modifiers, toggles selection on Space and ignores Enter on the row checkbox', async () => {
+    const user = userEvent.setup()
+    const activate = vi.fn()
+    const toggled = vi.fn()
+    const rows = makeRows(3)
+    render(
+      <Table
+        caption="Ledger"
+        columns={plainColumns}
+        rows={rows}
+        getRowKey={(row) => row.id}
+        selectable
+        onSelectionChange={toggled}
+        onRowActivate={activate}
+        rowFocus
+      />,
+    )
+
+    act(() => {
+      bodyRows()[1]?.focus()
+    })
+    await user.keyboard('{Enter}')
+    expect(activate).toHaveBeenCalledExactlyOnceWith(rows[1])
+
+    await user.keyboard('{Control>}{Enter}{/Control}{Shift>}{Enter}{/Shift}{Alt>}{Enter}{/Alt}{Meta>}{Enter}{/Meta}')
+    expect(activate).toHaveBeenCalledTimes(1)
+
+    await user.keyboard(' ')
+    expect(activate).toHaveBeenCalledTimes(1)
+    expect(toggled).toHaveBeenCalledExactlyOnceWith(new Set(['t2']))
+
+    act(() => {
+      within(bodyRows()[1] ?? document.body).getByRole('checkbox').focus()
+    })
+    await user.keyboard('{Enter}')
+    expect(activate).toHaveBeenCalledTimes(1)
+  })
+
+  it('activates the held row on Enter from the sentinel', async () => {
+    const user = userEvent.setup()
+    const activate = vi.fn()
+    const scroller = fakeScroller(360)
+    const rows = makeRows(5000)
+    render(<Table caption="Ledger" columns={plainColumns} rows={rows} getRowKey={(row) => row.id} onRowActivate={activate} virtualised />)
+
+    act(() => {
+      bodyRows()[0]?.focus()
+    })
+    scroller.scrollTo(30_000)
+    const sentinel = document.querySelector<HTMLElement>('tr[data-sentinel]')
+    expect(sentinel).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+    expect(activate).toHaveBeenCalledExactlyOnceWith(rows[0])
+  })
+
+  it('keeps plain rows out of the tab order without row focus, with tabbable checkboxes and no row keys', async () => {
+    const user = userEvent.setup()
+    const activate = vi.fn()
+    render(<Table caption="History" columns={plainColumns} rows={makeRows(3)} getRowKey={(row) => row.id} selectable onRowActivate={activate} />)
+
+    for (const row of bodyRows()) {
+      expect(row).not.toHaveAttribute('tabindex')
+    }
+    await user.tab()
+    await user.tab()
+    expect(within(bodyRows()[0] ?? document.body).getByRole('checkbox')).toHaveFocus()
+    act(() => {
+      bodyRows()[0]?.focus()
+    })
+    await user.keyboard('{Enter}{ArrowDown}')
+    expect(activate).not.toHaveBeenCalled()
+  })
+
+  it('keeps the resting tab stop on its row while the window moves without leaving it', () => {
+    const scroller = fakeScroller(360)
+    render(<Table caption="Ledger" columns={plainColumns} rows={makeRows(5000)} getRowKey={(row) => row.id} virtualised />)
+    const stop = () => document.querySelector('tbody tr[tabindex="0"]')?.getAttribute('aria-rowindex')
+
+    const first = stop()
+    scroller.scrollTo(36 * 3)
+    expect(stop()).toBe(first)
+
+    scroller.scrollTo(36 * 400)
+    const moved = stop()
+    expect(moved).not.toBe(first)
+    expect(Number(moved)).toBeGreaterThan(390)
+  })
+})

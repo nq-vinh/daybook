@@ -2,6 +2,11 @@ import { defineConfig, devices } from '@playwright/test'
 
 const port = 4180
 const baseURL = `http://127.0.0.1:${String(port)}`
+const desktop = {
+  ...devices['Desktop Chrome'],
+  viewport: { width: 1440, height: 950 },
+  deviceScaleFactor: 2,
+}
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -17,11 +22,16 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1440, height: 950 },
-        deviceScaleFactor: 2,
-      },
+      testIgnore: 'perf.spec.ts',
+      use: desktop,
+    },
+    {
+      name: 'perf',
+      testMatch: 'perf.spec.ts',
+      fullyParallel: false,
+      workers: 1,
+      dependencies: ['chromium'],
+      use: desktop,
     },
   ],
   webServer: {

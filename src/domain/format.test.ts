@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { defaultLocale, formatDate, formatMoney, formatPercent, formatRelative } from './format'
+import { defaultLocale, formatDate, formatMoney, formatPercent, formatRelative, formatSignedMoney } from './format'
 import { DAY_MS, TODAY } from './world'
 
 const NBSP = ' '
@@ -17,6 +17,12 @@ describe('format', () => {
     expect(formatMoney(-500, 'GBP', 'en-GB')).toBe('-£5.00')
     expect(formatMoney(123_456, 'EUR', 'de-DE')).toBe(`1.234,56${NBSP}€`)
     expect(formatMoney(-123_456, 'USD', 'de-DE')).toBe(`-1.234,56${NBSP}$`)
+  })
+
+  it('formats signed money with an explicit sign except for zero', () => {
+    expect(formatSignedMoney(123_456, 'EUR', 'en-GB')).toBe('+€1,234.56')
+    expect(formatSignedMoney(-500, 'GBP', 'en-GB')).toBe('-£5.00')
+    expect(formatSignedMoney(0, 'EUR', 'en-GB')).toBe('€0.00')
   })
 
   it('formats dates in UTC so every visitor sees the same day', () => {

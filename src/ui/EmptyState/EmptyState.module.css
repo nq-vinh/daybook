@@ -5,6 +5,11 @@
   padding-block: var(--space-8);
 }
 
+.compact {
+  gap: var(--space-1);
+  padding-block: 0;
+}
+
 .title {
   font-size: var(--text-lg);
   letter-spacing: normal;

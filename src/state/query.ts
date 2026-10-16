@@ -24,6 +24,18 @@ const EMPTY_IDS = new Int32Array(0)
 
 const EMPTY_TOTALS: LedgerTotals = Object.freeze({ count: 0, debits: 0, credits: 0, net: 0, currency: 'EUR' })
 
+function sameIds(previous: Int32Array, next: Int32Array): boolean {
+  if (previous.length !== next.length) {
+    return false
+  }
+  for (let index = 0; index < next.length; index += 1) {
+    if (previous[index] !== next[index]) {
+      return false
+    }
+  }
+  return true
+}
+
 function getCategoryEdits(): Edits['categories'] {
   return getEdits().categories
 }
@@ -43,7 +55,12 @@ export function useLedgerQuery(filter: FilterState, client: LedgerClient = ledge
       (result) => {
         if (current && result !== null) {
           startTransition(() => {
-            setLanded({ search: deferredSearch, categoryEdits, ids: result.ids, totals: result.totals })
+            setLanded((previous) => ({
+              search: deferredSearch,
+              categoryEdits,
+              ids: previous !== null && sameIds(previous.ids, result.ids) ? previous.ids : result.ids,
+              totals: result.totals,
+            }))
             setFailure(null)
           })
         }

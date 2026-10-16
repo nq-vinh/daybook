@@ -63,7 +63,9 @@ export interface TableProps<Row, Key extends TableKey = string> {
   readonly selectedKeys?: ReadonlySet<Key> | undefined
   readonly onSelectionChange?: ((keys: ReadonlySet<Key>) => void) | undefined
   readonly selectAllLimit?: number | undefined
+  readonly onRowActivate?: ((row: Row) => void) | undefined
   readonly virtualised?: boolean | undefined
+  readonly rowFocus?: boolean | undefined
   readonly className?: string | undefined
 }
 
@@ -74,11 +76,16 @@ interface ActiveRow<Key> {
 
 interface Latest {
   readonly activeIndex: number | null
+  readonly restingIndex: number | null
   readonly count: number
   readonly rowHeight: number
 }
 
 type RowHandlers<Key extends TableKey> = Omit<RowDispatch<Key>, 'register'>
+
+function clampToRange(index: number, start: number, end: number): number {
+  return Math.min(Math.max(index, start), end - 1)
+}
 
 export function nextSort(current: TableSort | null | undefined, key: string): TableSort {
   return current?.key === key && current.direction === 'ascending'
@@ -114,7 +121,9 @@ export function Table<Row, Key extends TableKey = string>({
   selectedKeys = emptySelection,
   onSelectionChange,
   selectAllLimit = Number.POSITIVE_INFINITY,
+  onRowActivate,
   virtualised = false,
+  rowFocus = virtualised,
   className,
 }: TableProps<Row, Key>) {
   const elements = useRef<Map<string, HTMLTableRowElement> | null>(null)
@@ -122,8 +131,9 @@ export function Table<Row, Key extends TableKey = string>({
   const tableRef = useRef<HTMLTableElement>(null)
   const bodyRef = useRef<HTMLTableSectionElement>(null)
   const sentinelRef = useRef<HTMLTableRowElement>(null)
-  const latest = useRef<Latest>({ activeIndex: null, count: 0, rowHeight: FALLBACK_ROW_HEIGHT })
+  const latest = useRef<Latest>({ activeIndex: null, restingIndex: null, count: 0, rowHeight: FALLBACK_ROW_HEIGHT })
   const [active, setActive] = useState<ActiveRow<Key> | null>(null)
+  const [resting, setResting] = useState<number | null>(null)
   const [view, setView] = useState<VirtualWindow>(() => readWindow(0, viewport.height(), FALLBACK_ROW_HEIGHT))
   const requestedView = useRef(view)
   const [dispatch] = useState<RowDispatch<Key>>(() => ({
@@ -185,7 +195,15 @@ export function Table<Row, Key extends TableKey = string>({
     }
   }
 
-  const fallbackIndex = virtualised ? Math.min(Math.max(view.clear, start), end - 1) : 0
+  let fallbackIndex = 0
+
+  if (virtualised) {
+    fallbackIndex = resting !== null && resting < count ? resting : clampToRange(view.clear, start, end)
+    if (fallbackIndex !== resting && count > 0) {
+      setResting(fallbackIndex)
+    }
+  }
+
   const focusIndex = activeIndex ?? (count > 0 ? fallbackIndex : null)
   const focusRow = focusIndex === null ? undefined : rows[focusIndex]
   const focusEntry = focusIndex === null ? undefined : entries[focusIndex - start]
@@ -294,19 +312,39 @@ export function Table<Row, Key extends TableKey = string>({
     return true
   }
 
+  function activate(event: KeyboardEvent<HTMLTableRowElement>, index: number): boolean {
+    const row = rows[index]
+    const modified = event.ctrlKey || event.metaKey || event.shiftKey || event.altKey
+
+    if (event.key !== 'Enter' || modified || onRowActivate === undefined || row === undefined) {
+      return false
+    }
+
+    event.preventDefault()
+    onRowActivate(row)
+    return true
+  }
+
   function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, index: number, key: Key) {
     if (event.target !== event.currentTarget) {
       return
     }
 
-    if (!moveFrom(event, index) && event.key === ' ' && selectable) {
+    if (moveFrom(event, index)) {
+      return
+    }
+
+    if (event.key === ' ' && selectable) {
       event.preventDefault()
       toggleRow(key)
+      return
     }
+
+    activate(event, index)
   }
 
   useLayoutEffect(() => {
-    latest.current = { activeIndex, count, rowHeight: view.rowHeight }
+    latest.current = { activeIndex, restingIndex: activeIndex === null && focusIndex !== null ? focusIndex : null, count, rowHeight: view.rowHeight }
     handlers.current = {
       focus: (key, index) => {
         setActive({ key, index })
@@ -346,10 +384,22 @@ export function Table<Row, Key extends TableKey = string>({
         }
       }
 
-      if (!sameWindow(requestedView.current, next)) {
-        requestedView.current = next
-        setView(next)
+      if (sameWindow(requestedView.current, next)) {
+        return
       }
+
+      const { restingIndex } = latest.current
+      if (parking && restingIndex !== null) {
+        const range = windowRange(next, total)
+        if (restingIndex < range.start || restingIndex >= range.end) {
+          flushSync(() => {
+            setResting(clampToRange(next.clear, range.start, range.end))
+          })
+        }
+      }
+
+      requestedView.current = next
+      setView(next)
     }
 
     function changed() {
@@ -454,7 +504,9 @@ export function Table<Row, Key extends TableKey = string>({
                 event.preventDefault()
                 return
               }
-              moveFrom(event, activeIndex)
+              if (!activate(event, activeIndex)) {
+                moveFrom(event, activeIndex)
+              }
             }}
           >
             <td colSpan={columnCount}>
@@ -472,6 +524,7 @@ export function Table<Row, Key extends TableKey = string>({
             index={index}
             selected={selectedKeys.has(key)}
             focusable={key === focusKey}
+            rowFocus={rowFocus}
             selectable={selectable}
             virtualised={virtualised}
             columns={columns}

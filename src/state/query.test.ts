@@ -84,6 +84,29 @@ describe('useLedgerQuery', () => {
     expect(hook.current.isStale).toBe(false)
   })
 
+  it('keeps the ids reference when a landed result has the same ids and updates only the totals', async () => {
+    const { client, calls } = fakeClient()
+    const { result: hook, rerender } = renderHook(({ filter }) => useLedgerQuery(filter, client), {
+      initialProps: { filter: DEFAULT_FILTER },
+    })
+    await respond(calls[0], result(4, 2, 7))
+    const first = hook.current.ids
+
+    rerender({ filter: { ...DEFAULT_FILTER, q: 'a' } })
+    await respond(calls[1], { ids: new Int32Array([4, 2, 7]), totals: { count: 3, debits: 10, credits: 5, net: -5, currency: 'EUR' } })
+
+    expect(hook.current.ids).toBe(first)
+    expect(hook.current.totals.net).toBe(-5)
+    expect(hook.current.search).toBe('?q=a')
+    expect(hook.current.isStale).toBe(false)
+
+    rerender({ filter: { ...DEFAULT_FILTER, q: 'ab' } })
+    await respond(calls[2], result(4, 2, 8))
+
+    expect(hook.current.ids).not.toBe(first)
+    expect([...hook.current.ids]).toEqual([4, 2, 8])
+  })
+
   it('lands only the settled value of a keystroke sequence and drops out-of-order responses', async () => {
     const { client, calls } = fakeClient({ supersede: false })
     const landed: Int32Array[] = []

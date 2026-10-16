@@ -7,6 +7,7 @@ export interface LedgerResultView {
   readonly ids: Int32Array
   readonly balances: ReadonlyMap<number, number> | null
   readonly balanceCurrency: Currency | null
+  readonly balanceKey: string | null
 }
 
 function runningBalances(ids: Int32Array, accountId: AccountId, newestFirst: boolean): ReadonlyMap<number, number> {
@@ -25,14 +26,24 @@ function runningBalances(ids: Int32Array, accountId: AccountId, newestFirst: boo
   return balances
 }
 
-export function resultView(ids: Int32Array, landedSearch: string | null): LedgerResultView {
+export function balanceKey(landedSearch: string | null): string | null {
   const filter = parseFilter(landedSearch ?? '')
   const { account, sort } = filter
 
   if (landedSearch === null || account === null || sort.column !== 'bookedAt' || hasNarrowingFilters(filter)) {
-    return { ids, balances: null, balanceCurrency: null }
+    return null
+  }
+  return `${account}:${sort.dir}`
+}
+
+export function resultView(ids: Int32Array, landedSearch: string | null): LedgerResultView {
+  const key = balanceKey(landedSearch)
+  const { account, sort } = parseFilter(landedSearch ?? '')
+
+  if (key === null || account === null) {
+    return { ids, balances: null, balanceCurrency: null, balanceKey: null }
   }
 
   const currency = ACCOUNTS.find((candidate) => candidate.id === account)?.currency ?? null
-  return { ids, balances: runningBalances(ids, account, sort.dir === 'desc'), balanceCurrency: currency }
+  return { ids, balances: runningBalances(ids, account, sort.dir === 'desc'), balanceCurrency: currency, balanceKey: key }
 }

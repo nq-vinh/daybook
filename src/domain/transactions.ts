@@ -15,6 +15,7 @@ import {
   monthIndexOf,
   monthStart,
   TODAY,
+  TRANSACTION_COUNT,
   WINDOW_MONTHS,
 } from './world'
 
@@ -36,7 +37,7 @@ export interface Transaction {
   vatRate: VatRate
 }
 
-export const TRANSACTION_COUNT = 100_000
+export { TRANSACTION_COUNT }
 
 export const PENDING_WINDOW_MS = 14 * DAY_MS
 

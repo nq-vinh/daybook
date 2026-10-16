@@ -50,13 +50,14 @@ interface FieldProps {
   readonly description: string | undefined
   readonly error: string | undefined
   readonly className: string | undefined
+  readonly hideLabel?: boolean | undefined
   readonly children: ReactNode
 }
 
-export function Field({ ids, label, description, error, className, children }: FieldProps) {
+export function Field({ ids, label, description, error, className, hideLabel = false, children }: FieldProps) {
   return (
     <div className={cx(styles.field, className)}>
-      <label className={styles.label} htmlFor={ids.controlId}>{label}</label>
+      <label className={hideLabel ? 'visually-hidden' : styles.label} htmlFor={ids.controlId}>{label}</label>
       {description !== undefined && <p id={ids.descriptionId} className={styles.description}>{description}</p>}
       {children}
       <FieldError id={ids.errorId} error={error} />

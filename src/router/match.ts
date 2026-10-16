@@ -6,6 +6,7 @@ export interface Route {
   readonly path: string
   readonly title: string
   readonly component: ComponentType<{ params: Params }>
+  readonly accept?: ((params: Params, pathname: string) => boolean) | undefined
 }
 
 export interface RouteMatch {
@@ -48,7 +49,7 @@ export function resolve(routes: readonly Route[], notFound: Route, pathname: str
   for (const route of routes) {
     const params = matchPath(route.path, pathname)
 
-    if (params !== null) {
+    if (params !== null && (route.accept?.(params, pathname) ?? true)) {
       return { route, params }
     }
   }

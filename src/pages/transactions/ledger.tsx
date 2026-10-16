@@ -2,13 +2,13 @@ import { type ReactNode, useState } from 'react'
 
 import { formatDate, formatMoney } from '../../domain/format'
 import { transaction } from '../../domain/transactions'
-import { CATEGORIES, type CategoryId, COUNTERPARTIES, type Currency } from '../../domain/world'
-import { useCategoryEdit } from '../../state/edits'
+import type { Currency } from '../../domain/world'
+import { navigate } from '../../router/history'
+import { Link } from '../../router/link'
 import type { SortColumn, SortDirection } from '../../state/url'
-import { Badge } from '../../ui/Badge/Badge'
-import { cx } from '../../ui/classes'
 import { Table, type TableColumn, type TableSort } from '../../ui/Table/Table'
 import styles from '../transactions.module.css'
+import { Amount, CategoryLabel, counterpartyName, Status, transactionHref } from './cells'
 import { SELECTION_LIMIT, writeFilter } from './filters'
 
 export interface LedgerProps {
@@ -20,10 +20,6 @@ export interface LedgerProps {
   readonly selection: ReadonlySet<number>
   readonly onSelectionChange: (selection: ReadonlySet<number>) => void
 }
-
-const counterpartyNames = new Map<string, string>(COUNTERPARTIES.map((counterparty) => [counterparty.id, counterparty.name]))
-
-const categoryLabels = new Map<string, string>(CATEGORIES.map((category) => [category.id, category.label]))
 
 const sortColumns: Partial<Record<string, { readonly column: SortColumn; readonly initial: SortDirection }>> = {
   bookedAt: { column: 'bookedAt', initial: 'desc' },
@@ -56,47 +52,23 @@ function changeSort({ key }: TableSort): void {
   }))
 }
 
-function counterpartyName(id: number): string {
-  return counterpartyNames.get(transaction(id).counterpartyId) ?? ''
-}
-
 function rowLabel(id: number): string {
   return `${counterpartyName(id)}, ${formatDate(transaction(id).bookedAt)}`
 }
 
-function CategoryLabel({ id }: { readonly id: number }) {
-  const edited = useCategoryEdit(id)
-  const category: CategoryId = edited ?? transaction(id).category
-  return categoryLabels.get(category) ?? category
-}
-
-function Status({ id }: { readonly id: number }) {
-  const { status } = transaction(id)
-  if (status === 'pending') {
-    return <Badge>Pending</Badge>
-  }
-  return status === 'declined' ? <Badge tone="negative">Declined</Badge> : null
-}
-
-function Amount({ id, side }: { readonly id: number; readonly side: 'debit' | 'credit' }) {
-  const { amount, currency, status } = transaction(id)
-  const isDebit = amount < 0
-
-  if (isDebit !== (side === 'debit')) {
-    return null
-  }
-
-  return (
-    <span className={cx(status === 'pending' && styles.pending)}>
-      {isDebit && <span className="visually-hidden">−</span>}
-      {formatMoney(Math.abs(amount), currency)}
-    </span>
-  )
+function openDetail(id: number): void {
+  navigate(transactionHref(id))
 }
 
 const baseColumns: TableColumn<number>[] = [
   { key: 'bookedAt', header: 'Date', cell: (id) => formatDate(transaction(id).bookedAt), sortable: true },
-  { key: 'counterparty', header: 'Counterparty', cell: counterpartyName, sortable: true, truncate: true },
+  {
+    key: 'counterparty',
+    header: 'Counterparty',
+    cell: (id) => <Link to={transactionHref(id)} tabIndex={-1}>{counterpartyName(id)}</Link>,
+    sortable: true,
+    truncate: true,
+  },
   { key: 'category', header: 'Category', cell: (id) => <CategoryLabel id={id} />, sortable: true, truncate: true },
   { key: 'status', header: 'Status', cell: (id) => <Status id={id} />, sortable: true },
   { key: 'debit', header: 'Debit', cell: (id) => <Amount id={id} side="debit" />, numeric: true, sortable: true },
@@ -169,6 +141,7 @@ export function Ledger({ ids, sortColumn, sortDir, balances, balanceCurrency, se
         selectedKeys={selection}
         onSelectionChange={onSelectionChange}
         selectAllLimit={SELECTION_LIMIT}
+        onRowActivate={openDetail}
         virtualised
       />
     </ScrollRegion>

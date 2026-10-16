@@ -184,12 +184,16 @@ describe('router', () => {
 
     try {
       renderApp()
+      const before = screen.getByRole('heading', { level: 1 }).textContent
 
-      navigate('/cards')
-      const cardsKey = window.sessionStorage.getItem('daybook:history-seq') ?? ''
-      navigate('/budgets')
+      const cardsKey = 'popped-cards'
+      window.history.pushState({ key: cardsKey }, '', '/cards')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+      window.history.pushState({ key: 'popped-budgets' }, '', '/budgets')
+      window.dispatchEvent(new PopStateEvent('popstate'))
 
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Overview')
+      expect(pending).toHaveLength(2)
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(before)
 
       act(() => {
         for (const update of pending) {
@@ -200,7 +204,6 @@ describe('router', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Budgets')
       expect(announcer()).toHaveTextContent('Budgets')
 
-      expect(cardsKey).toMatch(/^\d+$/)
       expect(window.sessionStorage.getItem('daybook:scroll')).not.toContain(`["${cardsKey}",`)
       await Promise.resolve()
       expect(reportError).not.toHaveBeenCalled()
@@ -213,6 +216,28 @@ describe('router', () => {
       if (originalScrollY !== undefined) {
         Object.defineProperty(window, 'scrollY', originalScrollY)
       }
+    }
+  })
+
+  it('publishes interaction-driven navigations directly without a view transition', () => {
+    const startViewTransition = vi.fn()
+    Object.defineProperty(document, 'startViewTransition', { configurable: true, value: startViewTransition })
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: () => ({ matches: false }),
+    })
+
+    try {
+      renderApp()
+      act(() => {
+        navigate('/cards')
+      })
+
+      expect(startViewTransition).not.toHaveBeenCalled()
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Cards')
+    } finally {
+      Reflect.deleteProperty(document, 'startViewTransition')
+      Reflect.deleteProperty(window, 'matchMedia')
     }
   })
 
@@ -239,7 +264,8 @@ describe('router', () => {
     try {
       renderApp()
       act(() => {
-        navigate('/cards')
+        window.history.pushState({ key: 'popped-failure' }, '', '/cards')
+        window.dispatchEvent(new PopStateEvent('popstate'))
       })
 
       await waitFor(() => {
@@ -524,11 +550,19 @@ describe('router', () => {
   })
 
   it('passes route params to the page', () => {
-    navigate('/transactions/tx-42')
+    navigate('/transactions/42')
     renderApp()
 
-    expect(screen.getByText('Details for transaction tx-42 will appear here.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Transaction' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Transactions' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current')
+  })
+
+  it.each(['tx-42', '-1', '042', '1.5', '100000', '%34%32'])('renders the not found state and title for the transaction id %s', (id) => {
+    navigate(`/transactions/${id}`)
+    renderApp()
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument()
+    expect(document.title).toBe('Page not found - Daybook')
   })
 })

@@ -75,4 +75,21 @@ describe('TextField', () => {
 
     expect(ref.current).toBe(screen.getByRole('textbox', { name: 'Note' }))
   })
+
+  it('renders a multiline textarea with the same label, description and error wiring', async () => {
+    const user = userEvent.setup()
+    const ref = createRef<HTMLTextAreaElement>()
+    render(<TextField multiline label="Notes" description="Saved when you leave the field." error="Too long." ref={ref} />)
+    const field = screen.getByRole('textbox', { name: 'Notes' })
+
+    expect(field.tagName).toBe('TEXTAREA')
+    expect(ref.current).toBe(field)
+    expect(field).toHaveAttribute('rows', '4')
+    expect(field).not.toHaveAttribute('multiline')
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    expect(field).toHaveAccessibleDescription('Saved when you leave the field. Too long.')
+
+    await user.type(field, 'one{Enter}two')
+    expect(field).toHaveValue('one\ntwo')
+  })
 })

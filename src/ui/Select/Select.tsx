@@ -8,13 +8,14 @@ export interface SelectProps extends Omit<ComponentPropsWithRef<'select'>, 'aria
   readonly label: string
   readonly description?: string | undefined
   readonly error?: string | undefined
+  readonly hideLabel?: boolean | undefined
 }
 
-export function Select({ label, description, error, id, className, children, ref, ...rest }: SelectProps) {
+export function Select({ label, description, error, hideLabel, id, className, children, ref, ...rest }: SelectProps) {
   const ids = useFieldIds(id, description, error)
 
   return (
-    <Field ids={ids} label={label} description={description} error={error} className={className}>
+    <Field ids={ids} label={label} description={description} error={error} className={className} hideLabel={hideLabel}>
       <div className={styles.control}>
         <select
           {...rest}

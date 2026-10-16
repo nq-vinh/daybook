@@ -11,22 +11,53 @@ export interface TextFieldProps
   readonly prefix?: ReactNode
   readonly suffix?: ReactNode
   readonly align?: 'start' | 'end' | undefined
+  readonly multiline?: undefined
 }
 
-export function TextField({
-  label,
-  description,
-  error,
-  prefix,
-  suffix,
-  align = 'start',
-  id,
-  className,
-  type = 'text',
-  ref,
-  ...rest
-}: TextFieldProps) {
-  const ids = useFieldIds(id, description, error)
+export interface MultilineTextFieldProps
+  extends Omit<ComponentPropsWithRef<'textarea'>, 'children' | 'aria-describedby' | 'aria-invalid'> {
+  readonly label: string
+  readonly description?: string | undefined
+  readonly error?: string | undefined
+  readonly multiline: true
+}
+
+export function TextField(props: TextFieldProps | MultilineTextFieldProps) {
+  const ids = useFieldIds(props.id, props.description, props.error)
+
+  if (props.multiline === true) {
+    const { label, description, error, multiline, className, rows = 4, ref, ...rest } = props
+
+    return (
+      <Field ids={ids} label={label} description={description} error={error} className={className}>
+        <div className={fieldStyles.control} data-multiline={multiline} data-focus-within-ring="">
+          <textarea
+            {...rest}
+            ref={ref}
+            id={ids.controlId}
+            rows={rows}
+            className={styles.textarea}
+            data-ring-source=""
+            aria-describedby={ids.describedBy}
+            aria-invalid={error === undefined ? undefined : true}
+          />
+        </div>
+      </Field>
+    )
+  }
+
+  const {
+    label,
+    description,
+    error,
+    prefix,
+    suffix,
+    align = 'start',
+    className,
+    type = 'text',
+    ref,
+    ...rest
+  } = props
 
   return (
     <Field ids={ids} label={label} description={description} error={error} className={className}>

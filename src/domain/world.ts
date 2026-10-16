@@ -6,6 +6,8 @@ export const DAY_MS = 86_400_000
 
 export const WINDOW_MONTHS = 36
 
+export const TRANSACTION_COUNT = 100_000
+
 export const WINDOW_START = Date.UTC(2023, 9, 1)
 
 export function monthStart(monthIndex: number): number {

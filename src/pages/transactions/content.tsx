@@ -1,13 +1,14 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 import { useRoute } from '../../router/router'
+import { rememberLedgerSearch } from '../../state/ledger-search'
 import { useLedgerQuery } from '../../state/query'
 import { parseFilter, serializeFilter } from '../../state/url'
 import { Button } from '../../ui/Button/Button'
 import { EmptyState } from '../../ui/EmptyState/EmptyState'
 import { Skeleton } from '../../ui/Skeleton/Skeleton'
 import styles from '../transactions.module.css'
-import { resultView, type LedgerResultView } from './balances'
+import { balanceKey, resultView, type LedgerResultView } from './balances'
 import { clearedFilter, SELECTION_LIMIT, writeFilter } from './filters'
 import { Ledger } from './ledger'
 import { SelectionBar } from './selection-bar'
@@ -36,9 +37,15 @@ export function LedgerContent() {
     setSelection(EMPTY_SELECTION)
   }
 
-  if (result.ids !== ids) {
+  if (result.ids !== ids || result.balanceKey !== balanceKey(landedSearch)) {
     setResult(resultView(ids, landedSearch))
   }
+
+  useEffect(() => {
+    if (landedSearch !== null) {
+      rememberLedgerSearch(landedSearch)
+    }
+  }, [landedSearch])
 
   function finishSelection() {
     resultsHeading.current?.focus()

@@ -116,13 +116,16 @@
 .totals {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-4);
+  grid-auto-rows: minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
   margin: 0;
 }
 
 .total {
   display: grid;
+  align-content: space-between;
   gap: var(--space-1);
+  min-inline-size: 0;
   padding-block-start: var(--space-2);
   border-block-start: var(--rule-width) solid var(--color-border);
 }
@@ -133,9 +136,29 @@
 }
 
 .total > dd {
+  overflow: hidden;
   margin: 0;
   font-size: var(--text-xl);
   font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.total > dd:where([data-tone="positive"]) {
+  color: var(--color-positive);
+}
+
+.total > dd:where([data-tone="negative"]) {
+  color: var(--color-negative);
+}
+
+@media (width >= 900px) {
+  @container (width < 36rem) {
+    .totals {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
 }
 
 .selection {
@@ -173,10 +196,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.pending {
-  color: var(--color-text-muted);
-}
-
 @media (width < 900px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
@@ -210,6 +229,15 @@
 
 .scroll {
   min-inline-size: 0;
+}
+
+.ledger td a {
+  color: inherit;
+  text-decoration-line: none;
+}
+
+.ledger td a:hover {
+  text-decoration-line: underline;
 }
 
 .ledger th:where([data-column="bookedAt"]) {

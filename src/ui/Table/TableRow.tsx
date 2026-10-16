@@ -18,6 +18,7 @@ export interface TableRowProps<Row, Key extends TableKey> {
   readonly index: number
   readonly selected: boolean
   readonly focusable: boolean
+  readonly rowFocus: boolean
   readonly selectable: boolean
   readonly virtualised: boolean
   readonly columns: readonly TableColumn<Row>[]
@@ -35,6 +36,7 @@ export function TableRow<Row, Key extends TableKey>({
   index,
   selected,
   focusable,
+  rowFocus,
   selectable,
   virtualised,
   columns,
@@ -47,22 +49,26 @@ export function TableRow<Row, Key extends TableKey>({
     <tr
       ref={(node) => dispatch.register(id, node)}
       className={styles.row}
-      tabIndex={focusable ? 0 : -1}
+      tabIndex={rowFocus ? (focusable ? 0 : -1) : undefined}
       aria-selected={selectable ? selected : undefined}
       aria-rowindex={virtualised ? index + 2 : undefined}
-      onFocus={() => {
-        dispatch.focus(rowKey, index)
-      }}
-      onKeyDown={(event) => {
-        dispatch.keyDown(event, rowKey, index)
-      }}
+      onFocus={rowFocus
+        ? () => {
+            dispatch.focus(rowKey, index)
+          }
+        : undefined}
+      onKeyDown={rowFocus
+        ? (event) => {
+            dispatch.keyDown(event, rowKey, index)
+          }
+        : undefined}
     >
       {selectable && (
         <td className={styles.select}>
           <Checkbox
             label={`Select ${getRowLabel?.(row) ?? `row ${String(index + 1)}`}`}
             hideLabel
-            tabIndex={-1}
+            tabIndex={rowFocus ? -1 : undefined}
             checked={selected}
             onChange={() => {
               dispatch.toggle(rowKey)

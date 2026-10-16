@@ -30,6 +30,10 @@
   background: var(--color-surface-sunken);
 }
 
+.control:where([data-multiline]) {
+  align-items: stretch;
+}
+
 .control:where(:has([aria-invalid="true"])) {
   border-color: var(--color-negative);
 }

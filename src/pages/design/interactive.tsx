@@ -310,6 +310,7 @@ function LedgerDemo({ caption, initialSort, initialSelected, forceFocus = false 
           selectable
           selectedKeys={selected}
           onSelectionChange={setSelected}
+          rowFocus
         />
       </div>
     </ScrollRegion>

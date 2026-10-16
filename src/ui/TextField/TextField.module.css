@@ -15,3 +15,17 @@
   font-variant-numeric: tabular-nums;
   text-align: end;
 }
+
+.textarea {
+  flex: 1;
+  min-inline-size: 0;
+  padding-block: var(--space-2);
+  border: 0;
+  background: transparent;
+  line-height: var(--line-height-body);
+  resize: vertical;
+}
+
+.textarea::placeholder {
+  color: var(--color-text-muted);
+}

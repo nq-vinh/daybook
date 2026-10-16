@@ -146,6 +146,25 @@ test('returns into the grid on Shift+Tab without jumping to the top after wheeli
   await expect(page.locator(`${BODY_ROWS}[aria-rowindex="2"]`)).toBeFocused()
 })
 
+test('tabs from the top of the page into a grid row without dropping focus, three times in a row', async ({ page }) => {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await openLedger(page)
+    let landed = false
+
+    for (let presses = 0; presses < 80 && !landed; presses += 1) {
+      await page.keyboard.press('Tab')
+      const state = await page.evaluate(() => ({
+        tag: document.activeElement?.tagName ?? 'NONE',
+        inGrid: document.activeElement?.closest('[role="grid"] tbody') !== null && document.activeElement?.tagName === 'TR',
+      }))
+      expect(state.tag, `attempt ${String(attempt + 1)}, press ${String(presses + 1)}`).not.toBe('BODY')
+      landed = state.inGrid
+    }
+
+    expect(landed, `attempt ${String(attempt + 1)}`).toBe(true)
+  }
+})
+
 test('walks the grid with the keyboard over the whole virtual set', async ({ page }) => {
   await openLedger(page)
 

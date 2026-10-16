@@ -125,7 +125,7 @@ function publish(): void {
   }
 }
 
-function commit(scrollY: number | null, fragment: string | null = null): void {
+function commit(scrollY: number | null, fragment: string | null, animate: boolean): void {
   const pathnameChanged = window.location.pathname !== latest.pathname
 
   if (pathnameChanged) {
@@ -142,7 +142,7 @@ function commit(scrollY: number | null, fragment: string | null = null): void {
     fragment: pathnameChanged ? fragment : null,
   }
 
-  if (!pathnameChanged || !('startViewTransition' in document)
+  if (!animate || !pathnameChanged || !('startViewTransition' in document)
     || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     publish()
     return
@@ -170,7 +170,7 @@ window.addEventListener('popstate', () => {
   }
 
   const remembered = scrollPositions.get(currentKey) ?? null
-  commit(window.location.pathname !== latest.pathname || currentKey !== previousKey ? remembered : null)
+  commit(window.location.pathname !== latest.pathname || currentKey !== previousKey ? remembered : null, null, true)
 })
 
 window.addEventListener('pagehide', () => {
@@ -204,5 +204,5 @@ export function navigate(to: string, { replace = false }: { readonly replace?: b
     window.history.pushState({ key: currentKey }, '', url)
   }
 
-  commit(null, url.hash === '' ? null : url.hash.slice(1))
+  commit(null, url.hash === '' ? null : url.hash.slice(1), false)
 }

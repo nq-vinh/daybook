@@ -40,6 +40,14 @@ export function writeFilter(
   navigate(`${pathname}${serializeFilter(update(parseFilter(search)))}`, { replace })
 }
 
+export function writeSearch(q: string): void {
+  if (window.location.pathname !== LEDGER_PATH) {
+    return
+  }
+  const wasEmpty = parseFilter(getLocation().search).q.trim() === ''
+  writeFilter((current) => ({ ...current, q }), { replace: wasEmpty === (q.trim() === '') })
+}
+
 export function withAccount(filter: FilterState, account: AccountId | null): FilterState {
   const kept = new Set<CardId>(cardsForAccount(account).map((card) => card.id))
   return { ...filter, account, card: filter.card.filter((card) => kept.has(card)) }

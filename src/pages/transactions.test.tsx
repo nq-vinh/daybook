@@ -189,18 +189,105 @@ describe('TransactionsPage', () => {
     expect(screen.getByText('1 active')).toBeInTheDocument()
   })
 
-  it('pushes a history entry for filter changes and replaces for search', async () => {
+  it('pushes for filter changes and at the start and end of a search session, replacing while the search changes', async () => {
     const user = await renderLedger()
+    const field = screen.getByRole('searchbox', { name: 'Search transactions' })
     const length = window.history.length
 
     await user.click(screen.getByRole('checkbox', { name: 'Software' }))
     expect(window.history.length).toBe(length + 1)
 
-    await user.type(screen.getByRole('searchbox', { name: 'Search transactions' }), 'ab')
+    await user.type(field, 'ab')
     await waitFor(() => {
       expect(window.location.search).toBe('?q=ab&cat=software')
     })
+    expect(window.history.length).toBe(length + 2)
+
+    await user.type(field, 'c')
+    await waitFor(() => {
+      expect(window.location.search).toBe('?q=abc&cat=software')
+    })
+    expect(window.history.length).toBe(length + 2)
+
+    await user.clear(field)
+    await waitFor(() => {
+      expect(window.location.search).toBe('?cat=software')
+    })
+    expect(window.history.length).toBe(length + 3)
+  })
+
+  it('treats a whitespace-only search as empty when deciding to push', async () => {
+    const user = await renderLedger('?q=%20%20')
+    const length = window.history.length
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search transactions' }), 'a')
+    await waitFor(() => {
+      expect(new URLSearchParams(window.location.search).get('q')?.trim()).toBe('a')
+    })
     expect(window.history.length).toBe(length + 1)
+  })
+
+  it('names the sideways scroll region only while the ledger overflows', async () => {
+    const callbacks: (() => void)[] = []
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) {
+        callbacks.push(callback)
+      }
+
+      observe = () => undefined
+      unobserve = () => undefined
+      disconnect = () => undefined
+    })
+    const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockReturnValue(600)
+    const clientWidth = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(600)
+
+    try {
+      await renderLedger()
+      act(() => {
+        for (const callback of callbacks) {
+          callback()
+        }
+      })
+      expect(screen.queryByRole('region', { name: 'Ledger, scrolls sideways' })).toBeNull()
+
+      scrollWidth.mockReturnValue(1_200)
+      act(() => {
+        for (const callback of callbacks) {
+          callback()
+        }
+      })
+
+      expect(screen.getByRole('region', { name: 'Ledger, scrolls sideways' })).toHaveAttribute('tabindex', '0')
+      expect(grid()).toHaveAccessibleName('Ledger')
+    } finally {
+      vi.unstubAllGlobals()
+      scrollWidth.mockRestore()
+      clientWidth.mockRestore()
+    }
+  })
+
+  it('cancels a pending search write when the location changes', async () => {
+    const user = await renderLedger()
+    const field = screen.getByRole('searchbox', { name: 'Search transactions' })
+
+    await user.type(field, 'ab')
+    await user.click(screen.getByRole('checkbox', { name: 'Software' }))
+    await act(async () => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 300)
+      })
+    })
+
+    expect(window.location.search).toBe('?cat=software')
+    expect(field).toHaveValue('')
+  })
+
+  it('flushes the pending search write on Enter', async () => {
+    const user = await renderLedger()
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search transactions' }), 'rent{Enter}')
+
+    expect(window.location.search).toBe('?q=rent')
   })
 
   it('reflects the URL in the sidebar and the header controls', async () => {
@@ -298,12 +385,15 @@ describe('TransactionsPage', () => {
 
     const bar = screen.getByRole('region', { name: 'Selection' })
     expect(bar).toHaveTextContent('2 selected')
+    expect(screen.queryByText('Transactions', { selector: 'dt' })).toBeNull()
+    expect(bar.parentElement).toHaveClass(styles.resultsSummary ?? '')
     await user.selectOptions(within(bar).getByRole('combobox', { name: 'Category' }), 'marketing')
     await user.click(within(bar).getByRole('button', { name: 'Categorise 2 transactions' }))
 
     expect(getEdits().categories[0]).toBe('marketing')
     expect(getEdits().categories[1]).toBe('marketing')
     expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull()
+    expect(screen.getByText('Transactions', { selector: 'dt' }).closest('dl')?.parentElement).toHaveClass(styles.resultsSummary ?? '')
     expect(screen.getByRole('heading', { name: 'Results' })).toHaveFocus()
     expect(await screen.findByText('Categorised 2 transactions as Marketing')).toBeInTheDocument()
     await waitFor(() => {

@@ -170,6 +170,15 @@ test('walks the grid with the keyboard over the whole virtual set', async ({ pag
   const paged = Number(await focusedRowIndex(page))
   expect(Math.abs(paged - (2 + visibleStep))).toBeLessThanOrEqual(1)
   await expect(page.locator(':focus')).toBeInViewport()
+
+  await page.keyboard.press('PageDown')
+  const pagedTwice = Number(await focusedRowIndex(page))
+  expect(pagedTwice - paged).toBe(paged - 2)
+  await page.keyboard.press('PageUp')
+  expect(await focusedRowIndex(page)).toBe(String(paged))
+  await expect(page.locator(':focus')).toBeInViewport()
+  await page.keyboard.press('PageUp')
+  expect(await focusedRowIndex(page)).toBe('2')
 })
 
 test('pages by the visible rows right after a jump, before any scroll event lands', async ({ page }) => {
@@ -217,6 +226,25 @@ test('round-trips the filters through the URL, reload and history', async ({ pag
   await expect(page.getByLabel('From')).toHaveValue('2025-01-01')
   await expect(page.getByRole('searchbox', { name: 'Search transactions' })).toHaveValue('cloud')
   await expect(page.getByRole('region', { name: 'Results' })).toHaveAttribute('aria-busy', 'false')
+
+  await openLedger(page)
+  await page.evaluate(() => {
+    window.scrollTo(0, 20_000)
+  })
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(20_000)
+  await page.getByRole('checkbox', { name: 'Declined' }).dispatchEvent('click')
+  await expect(page).toHaveURL(/\?status=declined$/)
+  await page.getByRole('checkbox', { name: 'Software' }).dispatchEvent('click')
+  await expect(page).toHaveURL(/\?cat=software&status=declined$/)
+  await expect(page.getByRole('region', { name: 'Results' })).toHaveAttribute('aria-busy', 'false')
+  expect(await page.evaluate(() => window.scrollY)).toBeLessThan(19_800)
+
+  await page.goBack()
+  await expect(page).toHaveURL(/\?status=declined$/)
+  await page.goBack()
+  await expect(page).toHaveURL(/\/transactions$/)
+  await expect(page.getByRole('region', { name: 'Results' })).toHaveAttribute('aria-busy', 'false')
+  await expect.poll(() => page.evaluate(() => Math.abs(window.scrollY - 20_000))).toBeLessThanOrEqual(200)
 })
 
 for (const colorScheme of ['light', 'dark'] as const) {

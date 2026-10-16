@@ -183,12 +183,7 @@ export function subscribeEdits(listener: () => void): () => void {
 }
 
 export function setCategory(id: number, categoryId: CategoryId | null): void {
-  assertTransactionId(id)
-  const current = getEdits()
-  const categories = categoryId === null || categoryId === transaction(id).category
-    ? withoutKey(current.categories, id)
-    : { ...current.categories, [id]: categoryId }
-  commit({ categories: Object.freeze(categories) })
+  setCategories([id], categoryId)
 }
 
 export function setCategories(ids: Iterable<number>, categoryId: CategoryId | null): void {

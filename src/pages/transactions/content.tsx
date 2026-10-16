@@ -88,15 +88,16 @@ export function LedgerContent() {
       <FilterSidebar search={sidebarSearch} />
       <section className={styles.results} aria-labelledby={resultsHeadingId} aria-busy={isStale}>
         <h2 id={resultsHeadingId} ref={resultsHeading} className="visually-hidden" tabIndex={-1}>Results</h2>
-        <Totals totals={totals} isReady={isReady} />
-        <div className={styles.selectionSlot}>
-          {selection.size > 0 && (
-            <SelectionBar
-              selection={selection}
-              limited={selection.size >= SELECTION_LIMIT && ids.length > SELECTION_LIMIT}
-              onDone={finishSelection}
-            />
-          )}
+        <div className={styles.resultsSummary}>
+          {selection.size > 0
+            ? (
+                <SelectionBar
+                  selection={selection}
+                  limited={selection.size >= SELECTION_LIMIT && ids.length > SELECTION_LIMIT}
+                  onDone={finishSelection}
+                />
+              )
+            : <Totals totals={totals} isReady={isReady} />}
         </div>
         {ledger()}
       </section>

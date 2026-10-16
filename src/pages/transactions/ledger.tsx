@@ -127,7 +127,7 @@ function ScrollRegion({ children }: { readonly children: ReactNode }) {
   }
 
   return (
-    <div ref={wrapperRef} className={styles.scroll} role="region" aria-label="Ledger" tabIndex={0}>
+    <div ref={wrapperRef} className={styles.scroll} role="region" aria-label="Ledger, scrolls sideways" tabIndex={0}>
       {children}
     </div>
   )

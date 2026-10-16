@@ -4,6 +4,41 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { getLocation, subscribe, type RouteLocation } from './history'
 import { resolve, type Route, type RouteMatch } from './match'
 
+const SCROLL_HOLD_MS = 1_000
+const USER_SCROLL_EVENTS = ['wheel', 'touchstart', 'keydown'] as const
+
+function canReach(scrollY: number): boolean {
+  return document.documentElement.scrollHeight - window.innerHeight >= scrollY
+}
+
+function holdScroll(scrollY: number): (() => void) | undefined {
+  if (canReach(scrollY) || typeof ResizeObserver === 'undefined') {
+    return undefined
+  }
+
+  const observer = new ResizeObserver(() => {
+    if (canReach(scrollY)) {
+      window.scrollTo(0, scrollY)
+      release()
+    }
+  })
+  const timer = window.setTimeout(release, SCROLL_HOLD_MS)
+
+  function release() {
+    observer.disconnect()
+    window.clearTimeout(timer)
+    for (const type of USER_SCROLL_EVENTS) {
+      window.removeEventListener(type, release)
+    }
+  }
+
+  observer.observe(document.body)
+  for (const type of USER_SCROLL_EVENTS) {
+    window.addEventListener(type, release, { passive: true })
+  }
+  return release
+}
+
 interface RouterState extends RouteMatch {
   readonly location: RouteLocation
 }
@@ -33,7 +68,9 @@ export function RouterProvider({ routes, notFound, children }: RouterProviderPro
       fragmentTarget.scrollIntoView()
     } else if (location.scrollY !== null) {
       window.scrollTo(0, location.scrollY)
+      return holdScroll(location.scrollY)
     }
+    return undefined
   }, [location, match.route.title])
 
   return <RouterContext value={{ ...match, location }}>{children}</RouterContext>

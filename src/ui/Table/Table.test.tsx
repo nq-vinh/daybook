@@ -247,6 +247,24 @@ describe('virtualised Table', () => {
     expect(focusedRowIndex()).toBe('2')
   })
 
+  it('does not park focus on the sentinel when virtualisation switches on', () => {
+    const scroller = fakeScroller(360)
+    const rows = makeRows(200)
+    const { rerender } = render(<Table caption="Ledger" columns={plainColumns} rows={rows} getRowKey={(row) => row.id} />)
+    const first = bodyRows()[0]
+    act(() => {
+      first?.focus()
+    })
+    expect(first).toHaveFocus()
+    scroller.scrollTo(3_000)
+
+    rerender(<Table caption="Ledger" columns={plainColumns} rows={rows} getRowKey={(row) => row.id} virtualised />)
+
+    const sentinel = document.querySelector('tr[data-sentinel]')
+    expect(sentinel).not.toBeNull()
+    expect(sentinel).not.toHaveFocus()
+  })
+
   it('parks focus on the sentinel when the focused row scrolls out and returns to the row on an arrow key', async () => {
     const user = userEvent.setup()
     const scroller = fakeScroller(360)

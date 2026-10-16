@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 
 import styles from './app.module.css'
 import { type AccountId, ACCOUNTS } from './domain/world'
-import { navigate } from './router/history'
-import { isAccountId, LEDGER_PATH, writeAccount, writeFilter } from './pages/transactions/filters'
+import { getLocation, navigate } from './router/history'
+import { isAccountId, LEDGER_PATH, writeAccount, writeSearch } from './pages/transactions/filters'
 import { navigation } from './pages/routes'
 import { RouteAnnouncer } from './router/announcer'
 import { Link } from './router/link'
@@ -39,28 +39,35 @@ function AccountSwitcher({ account }: { readonly account: AccountId | null }) {
 
 const SEARCH_DEBOUNCE_MS = 150
 
-function HeaderSearch({ onLedger, q, account }: { readonly onLedger: boolean; readonly q: string; readonly account: AccountId | null }) {
+interface HeaderSearchProps {
+  readonly onLedger: boolean
+  readonly q: string
+  readonly account: AccountId | null
+  readonly locationKey: string
+}
+
+function HeaderSearch({ onLedger, q, account, locationKey }: HeaderSearchProps) {
   const urlQuery = onLedger ? q : ''
   const [draft, setDraft] = useState(urlQuery)
-  const [synced, setSynced] = useState(urlQuery)
+  const [synced, setSynced] = useState({ q: urlQuery, key: locationKey })
 
-  if (synced !== urlQuery) {
-    setSynced(urlQuery)
+  if (synced.q !== urlQuery || synced.key !== locationKey) {
+    setSynced({ q: urlQuery, key: locationKey })
     setDraft(urlQuery)
   }
 
   useEffect(() => {
-    if (!onLedger || draft === synced) {
+    if (!onLedger || draft === synced.q) {
       return
     }
     const timer = setTimeout(() => {
-      setSynced(draft)
-      writeFilter((current) => ({ ...current, q: draft }), { replace: true })
+      writeSearch(draft)
+      setSynced({ q: draft, key: getLocation().key })
     }, SEARCH_DEBOUNCE_MS)
     return () => {
       clearTimeout(timer)
     }
-  }, [draft, onLedger, synced])
+  }, [draft, onLedger, synced.q])
 
   return (
     <form
@@ -70,6 +77,9 @@ function HeaderSearch({ onLedger, q, account }: { readonly onLedger: boolean; re
         event.preventDefault()
         if (!onLedger) {
           navigate(`${LEDGER_PATH}${serializeFilter({ ...DEFAULT_FILTER, account, q: draft })}`)
+        } else if (draft !== synced.q) {
+          writeSearch(draft)
+          setSynced({ q: draft, key: getLocation().key })
         }
       }}
     >
@@ -97,7 +107,12 @@ export function App() {
         <div className={styles.bar}>
           <Link className={styles.wordmark} to="/">Daybook</Link>
           <AccountSwitcher account={filter.account} />
-          <HeaderSearch onLedger={location.pathname === LEDGER_PATH} q={filter.q} account={filter.account} />
+          <HeaderSearch
+            onLedger={location.pathname === LEDGER_PATH}
+            q={filter.q}
+            account={filter.account}
+            locationKey={location.key}
+          />
           <ThemeSwitch className={styles.theme} />
         </div>
         <nav className={styles.nav} aria-label="Main">

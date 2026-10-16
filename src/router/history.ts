@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom'
 export interface RouteLocation {
   readonly pathname: string
   readonly search: string
+  readonly key: string
   readonly navigations: number
   readonly pathnameChanged: boolean
   readonly scrollY: number | null
@@ -103,6 +104,7 @@ let navigations = 0
 let latest: RouteLocation = {
   pathname: window.location.pathname,
   search: window.location.search,
+  key: currentKey,
   navigations,
   pathnameChanged: false,
   scrollY: scrollPositions.get(currentKey) ?? null,
@@ -123,7 +125,7 @@ function publish(): void {
   }
 }
 
-function commit(scrollY: number, fragment: string | null = null): void {
+function commit(scrollY: number | null, fragment: string | null = null): void {
   const pathnameChanged = window.location.pathname !== latest.pathname
 
   if (pathnameChanged) {
@@ -133,9 +135,10 @@ function commit(scrollY: number, fragment: string | null = null): void {
   latest = {
     pathname: window.location.pathname,
     search: window.location.search,
+    key: currentKey,
     navigations,
     pathnameChanged,
-    scrollY: pathnameChanged ? scrollY : null,
+    scrollY: pathnameChanged ? scrollY ?? 0 : scrollY,
     fragment: pathnameChanged ? fragment : null,
   }
 
@@ -148,20 +151,26 @@ function commit(scrollY: number, fragment: string | null = null): void {
   const transition = document.startViewTransition(() => {
     flushSync(publish)
   })
-  for (const settled of [transition.ready, transition.finished, transition.updateCallbackDone]) {
-    Promise.resolve(settled).catch(() => undefined)
-  }
+  Promise.resolve(transition.ready).catch(() => undefined)
+  Promise.resolve(transition.finished).catch(() => undefined)
+  Promise.resolve(transition.updateCallbackDone).catch(reportError)
 }
 
 window.addEventListener('popstate', () => {
   rememberScroll(currentKey)
+  const previousKey = currentKey
   currentKey = ensureKey()
 
   if (window.location.pathname === latest.pathname && window.location.search === latest.search) {
+    if (currentKey !== previousKey) {
+      latest = { ...latest, key: currentKey, pathnameChanged: false, scrollY: null, fragment: null }
+      publish()
+    }
     return
   }
 
-  commit(scrollPositions.get(currentKey) ?? 0)
+  const remembered = scrollPositions.get(currentKey) ?? null
+  commit(window.location.pathname !== latest.pathname || currentKey !== previousKey ? remembered : null)
 })
 
 window.addEventListener('pagehide', () => {
@@ -187,12 +196,13 @@ export function navigate(to: string, { replace = false }: { readonly replace?: b
   }
 
   if (replace) {
-    window.history.replaceState({ key: ensureKey() }, '', url)
+    currentKey = ensureKey()
+    window.history.replaceState({ key: currentKey }, '', url)
   } else {
     rememberScroll(ensureKey())
     currentKey = nextKey()
     window.history.pushState({ key: currentKey }, '', url)
   }
 
-  commit(0, url.hash === '' ? null : url.hash.slice(1))
+  commit(null, url.hash === '' ? null : url.hash.slice(1))
 }

@@ -35,25 +35,29 @@ export function SelectionBar({ selection, limited, onDone }: SelectionBarProps) 
 
   return (
     <section className={styles.selection} aria-label="Selection">
-      <p className={styles.selectionCount}>{count} selected</p>
-      {limited && <p className={styles.notice}>{`Selection limited to the first ${formatCount(SELECTION_LIMIT)} rows`}</p>}
-      <Select
-        label="Category"
-        className={styles.inlineField}
-        value={category ?? ''}
-        onChange={(event) => {
-          const { value } = event.target
-          setChoice(isCategoryId(value) ? value : null)
-        }}
-      >
-        <option value="" disabled>Choose a category</option>
-        {CATEGORY_GROUPS.map((group) => (
-          <optgroup key={group.label} label={group.label}>
-            {group.categories.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-          </optgroup>
-        ))}
-      </Select>
-      <Button disabled={category === null} onClick={categorise}>{`Categorise ${count} ${noun}`}</Button>
+      <div className={styles.selectionStatus}>
+        <p className={styles.selectionCount}>{count} selected</p>
+        {limited && <p className={styles.notice}>{`Selection limited to the first ${formatCount(SELECTION_LIMIT)} rows`}</p>}
+      </div>
+      <div className={styles.selectionActions}>
+        <Select
+          label="Category"
+          className={styles.inlineField}
+          value={category ?? ''}
+          onChange={(event) => {
+            const { value } = event.target
+            setChoice(isCategoryId(value) ? value : null)
+          }}
+        >
+          <option value="" disabled>Choose a category</option>
+          {CATEGORY_GROUPS.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.categories.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+            </optgroup>
+          ))}
+        </Select>
+        <Button disabled={category === null} onClick={categorise}>{`Categorise ${count} ${noun}`}</Button>
+      </div>
     </section>
   )
 }

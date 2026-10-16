@@ -9,6 +9,8 @@ import styles from './Table.module.css'
 import { cellClass, type RowDispatch, TableRow } from './TableRow'
 import {
   FALLBACK_ROW_HEIGHT,
+  measureGeometry,
+  pageStep,
   readWindow,
   sameWindow,
   viewport,
@@ -201,10 +203,8 @@ export function Table<Row, Key extends TableKey = string>({
   }
 
   function measureView(body: HTMLTableSectionElement): VirtualWindow {
-    const sample = body.querySelector('tr[aria-rowindex]:not([data-sentinel])')
-    const rowHeight = viewport.blockSize(sample) || latest.current.rowHeight
-    const stickyHeight = viewport.blockSize(tableRef.current?.tHead ?? null)
-    return readWindow(viewport.top(body), viewport.height(), rowHeight, stickyHeight)
+    const { top, height, rowHeight, stickyHeight } = measureGeometry(body, tableRef.current?.tHead ?? null, latest.current.rowHeight)
+    return readWindow(top, height, rowHeight, stickyHeight)
   }
 
   function liveView(): VirtualWindow {
@@ -287,8 +287,9 @@ export function Table<Row, Key extends TableKey = string>({
     }
 
     event.preventDefault()
-    const live = target.paged === true && virtualised ? liveView() : null
-    const step = target.paged !== true ? 1 : live === null ? PAGE_ROWS : Math.max(1, live.last - live.clear)
+    const body = bodyRef.current
+    const geometry = target.paged === true && virtualised && body !== null ? measureGeometry(body, tableRef.current?.tHead ?? null, view.rowHeight) : null
+    const step = target.paged !== true ? 1 : geometry === null ? PAGE_ROWS : pageStep(geometry)
     focusAt(clampedIndex(target.move, index, count, step))
     return true
   }
@@ -324,7 +325,7 @@ export function Table<Row, Key extends TableKey = string>({
       return
     }
 
-    function update() {
+    function update(parking: boolean) {
       if (body === null) {
         return
       }
@@ -333,7 +334,7 @@ export function Table<Row, Key extends TableKey = string>({
       const focused = document.activeElement
       const { activeIndex: current, count: total } = latest.current
 
-      if (current !== null && focused !== null && focused !== sentinelRef.current && body.contains(focused)) {
+      if (parking && current !== null && focused !== null && focused !== sentinelRef.current && body.contains(focused)) {
         const range = windowRange(next, total)
         if (current < range.start || current >= range.end) {
           requestedView.current = next
@@ -351,15 +352,19 @@ export function Table<Row, Key extends TableKey = string>({
       }
     }
 
-    update()
-    window.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
+    function changed() {
+      update(true)
+    }
+
+    update(false)
+    window.addEventListener('scroll', changed, { passive: true })
+    window.addEventListener('resize', changed)
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(changed)
     observer?.observe(document.body)
 
     return () => {
-      window.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', changed)
+      window.removeEventListener('resize', changed)
       observer?.disconnect()
     }
   }, [virtualised])

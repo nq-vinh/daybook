@@ -11,9 +11,11 @@
 
 .bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-2) var(--space-4);
   min-block-size: var(--space-16);
+  padding-block: var(--space-2);
 }
 
 .wordmark {
@@ -23,26 +25,33 @@
   text-decoration: none;
 }
 
-.theme {
+.tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
   margin-inline-start: auto;
 }
 
 .headerField {
   grid-auto-flow: column;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-2);
+}
+
+.headerField input,
+.headerField select {
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.headerField > label {
+  white-space: nowrap;
 }
 
 .search {
   flex: 0 1 calc(var(--table-column-lg) + var(--space-16));
   min-inline-size: 0;
-}
-
-@media (width < 900px) {
-  .bar {
-    flex-wrap: wrap;
-    padding-block: var(--space-2);
-  }
 }
 
 .navList {
@@ -55,6 +64,7 @@
 
 .navLink {
   display: block;
+  white-space: nowrap;
   padding-block: var(--space-3);
   color: var(--color-text-muted);
   text-decoration: none;
@@ -78,3 +88,48 @@
   view-transition-name: main;
 }
 
+@media (width < 640px) {
+  .bar {
+    display: grid;
+    grid-template-areas:
+      "brand brand"
+      "account search"
+      "tools tools";
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .wordmark {
+    grid-area: brand;
+    justify-self: start;
+  }
+
+  .account {
+    grid-area: account;
+  }
+
+  .search {
+    grid-area: search;
+  }
+
+  .tools {
+    grid-area: tools;
+    justify-content: space-between;
+    margin-inline-start: 0;
+  }
+
+  .headerField {
+    grid-auto-flow: row;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+
+  .labelSuffix {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

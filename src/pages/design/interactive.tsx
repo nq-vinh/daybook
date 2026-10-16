@@ -10,11 +10,12 @@ import { Dialog } from '../../ui/Dialog/Dialog'
 import { Icon, type IconName } from '../../ui/Icon/Icon'
 import { IconButton } from '../../ui/IconButton/IconButton'
 import { Menu, type MenuEntry } from '../../ui/Menu/Menu'
+import { ScrollRegion } from '../../ui/ScrollRegion/ScrollRegion'
 import { Table, type TableColumn, type TableSort } from '../../ui/Table/Table'
 import { Tabs } from '../../ui/Tabs/Tabs'
 import { Tooltip } from '../../ui/Tooltip/Tooltip'
 import styles from './design.module.css'
-import { ComponentSection, forceFocusOn, ScrollRegion, States } from './section'
+import { ComponentSection, forceFocusOn, States } from './section'
 
 const LEDGER_SAMPLE_SIZE = 6
 const LEDGER_SAMPLE_STEP = 997
@@ -346,6 +347,23 @@ function TableSection() {
   )
 }
 
+function ScrollRegionSection() {
+  return (
+    <ComponentSection
+      name="ScrollRegion"
+      description="Holds content wider or taller than its box, such as the latest activity table, the chart tables and the live feed list. It becomes a labelled, focusable region only while its content overflows, so a box that fits adds no tab stop."
+      keyboard={[
+        'Tab reaches the region only while it overflows; the arrow keys then scroll it.',
+        'Links and buttons inside keep their own tab stops.',
+      ]}
+    >
+      <ScrollRegion label="Monthly totals sample, scrolls sideways" className={styles.scrollDemo}>
+        <p className="money">January €12,480.00, February €9,120.50, March €14,002.75, April €11,310.20</p>
+      </ScrollRegion>
+    </ComponentSection>
+  )
+}
+
 function IconSection() {
   return (
     <ComponentSection
@@ -378,6 +396,7 @@ export function InteractiveSections() {
       <TabsSection />
       <ToastSection />
       <TableSection />
+      <ScrollRegionSection />
       <IconSection />
     </>
   )

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-import { formatMoney } from '../../domain/format'
+import { formatMoney, formatSignedMoney } from '../../domain/format'
 import { transaction } from '../../domain/transactions'
 import { CATEGORIES, type CategoryId, COUNTERPARTIES, type Currency } from '../../domain/world'
 import { getRowOverride, type SettledStatus, subscribeRow } from '../../state/feed'
@@ -56,11 +56,17 @@ export function Amount({ id, side, settled }: FeedCellProps & { readonly side: '
   }
 
   return (
-    <span className={cx(status === 'pending' && styles.pending)}>
+    <span className={cx('money', status === 'pending' && styles.pending)}>
       {isDebit && <span className="visually-hidden">−</span>}
       {formatMoney(Math.abs(amount), currency)}
     </span>
   )
+}
+
+export function SignedAmount({ id, settled }: FeedCellProps) {
+  const { amount, currency, status: seeded } = transaction(id)
+  const status = settled ?? seeded
+  return <span className={cx('money', status === 'pending' && styles.pending)}>{formatSignedMoney(amount, currency)}</span>
 }
 
 export function Balance({ id, rows, currency }: { readonly id: number; readonly rows: BalanceRows; readonly currency: Currency }) {

@@ -94,6 +94,10 @@ table {
   outline: none;
 }
 
+.money {
+  white-space: nowrap;
+}
+
 .visually-hidden {
   position: absolute;
   inline-size: 1px;

@@ -33,10 +33,13 @@
   overflow-wrap: anywhere;
 }
 
+.section .scrollDemo {
+  max-inline-size: 20rem;
+  padding-block: var(--space-2);
+}
+
 .scroll {
   align-self: stretch;
-  max-inline-size: 100%;
-  overflow-x: auto;
 }
 
 .data,

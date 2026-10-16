@@ -1,4 +1,5 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 
 import { formatDate, formatSignedMoney } from '../../domain/format'
 import { transaction } from '../../domain/transactions'
@@ -19,8 +20,10 @@ import { Badge } from '../../ui/Badge/Badge'
 import { EmptyState } from '../../ui/EmptyState/EmptyState'
 import { Button } from '../../ui/Button/Button'
 import { cx } from '../../ui/classes'
+import { ScrollRegion } from '../../ui/ScrollRegion/ScrollRegion'
 import { counterpartyName, transactionHref } from '../transactions/cells'
 import { arrivalsSince, createFeedAnnouncer } from './feed-announcer'
+import { currentMergePoint, mergeThrough, newPaymentsLabel, splitFeed } from './feed-buffer'
 import styles from './live-feed.module.css'
 
 export const VISIBLE_EVENTS = 8
@@ -64,7 +67,7 @@ function FeedItem({ event, arrived }: { readonly event: FeedEvent; readonly arri
   return (
     <li className={styles.item} data-arrived={arrived ? '' : undefined} data-feed-id={event.id}>
       <Link className={styles.name} to={transactionHref(event.id)}>{counterpartyName(event.id)}</Link>
-      <span className={styles.amount}>{formatSignedMoney(amount, currency)}</span>
+      <span className={cx(styles.amount, 'money')}>{formatSignedMoney(amount, currency)}</span>
       {event.status === 'booked' ? <Badge tone="positive">Booked</Badge> : <Badge tone="negative">Declined</Badge>}
       <time className={styles.time} dateTime={new Date(at).toISOString()}>{formatDate(at, undefined, TIME_FORMAT)}</time>
     </li>
@@ -77,16 +80,38 @@ export function LiveFeed() {
   const paused = useFeedPaused()
   const announcement = useFeedAnnouncement()
   const [newestAtMount] = useState(() => events[0]?.sequence ?? -1)
-  const hidden = events.length - VISIBLE_EVENTS
+  const [storedMergePoint, setMergedThrough] = useState(newestAtMount)
+  const mergedThrough = currentMergePoint(events, storedMergePoint)
+  if (mergedThrough !== storedMergePoint) {
+    setMergedThrough(mergedThrough)
+  }
+  const listRef = useRef<HTMLOListElement | null>(null)
+  const { shown, buffered } = splitFeed(events, mergedThrough)
+  const hidden = shown.length - VISIBLE_EVENTS
+
+  function showBuffered(): void {
+    flushSync(() => {
+      setMergedThrough(mergeThrough(events, mergedThrough))
+    })
+    const list = listRef.current
+    const region = list?.closest('[data-scroll-region]')
+    if (region) {
+      region.scrollTop = 0
+    }
+    list?.querySelector('a')?.focus({ preventScroll: true })
+  }
 
   return (
     <section className={styles.card} aria-labelledby={headingId}>
       <div className={styles.header}>
         <h2 id={headingId}>Incoming payments</h2>
+        {buffered.length > 0 && (
+          <Button variant="secondary" size="sm" className={styles.show} onClick={showBuffered}>{newPaymentsLabel(buffered.length)}</Button>
+        )}
         <Button
           variant="secondary"
           size="sm"
-          className={cx(paused && styles.pressed)}
+          className={cx(styles.pause, paused && styles.pressed)}
           aria-pressed={paused}
           onClick={() => {
             if (paused) {
@@ -99,14 +124,17 @@ export function LiveFeed() {
           Pause
         </Button>
       </div>
-      {events.length === 0
+      {shown.length === 0
         ? <EmptyState compact headingLevel={3} title="Waiting for the first payment." description="Payments appear here as they settle." />
         : (
-            <ol className={styles.list} aria-label="Settled payments, newest first">
-              {events.slice(0, VISIBLE_EVENTS).map((event) => (
-                <FeedItem key={event.sequence} event={event} arrived={event.sequence > newestAtMount} />
-              ))}
-            </ol>
+            <ScrollRegion axis="block" label="Settled payments, scrolls" className={styles.scroller}>
+              {/* eslint-disable-next-line jsx-a11y/no-redundant-roles -- list-style none drops list semantics in WebKit */}
+              <ol ref={listRef} className={styles.list} role="list" aria-label="Settled payments, newest first">
+                {shown.slice(0, VISIBLE_EVENTS).map((event) => (
+                  <FeedItem key={event.sequence} event={event} arrived={event.sequence > newestAtMount} />
+                ))}
+              </ol>
+            </ScrollRegion>
           )}
       {hidden > 0 && <p className={styles.more}>{`and ${String(hidden)} more`}</p>}
       <p role="status" aria-atomic="true" className="visually-hidden">{announcement}</p>

@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 
-import { Skeleton } from '../ui/Skeleton/Skeleton'
+import { OverviewSkeleton } from './overview/layout'
 
 const OverviewContent = lazy(async () => {
   const { OverviewContent: content } = await import('./overview/content')
@@ -11,8 +11,7 @@ export function OverviewPage() {
   return (
     <>
       <h1 tabIndex={-1}>Overview</h1>
-      <p>Balances, cash flow and the latest activity across your accounts will appear here.</p>
-      <Suspense fallback={<Skeleton variant="text" lines={4} />}>
+      <Suspense fallback={<OverviewSkeleton />}>
         <OverviewContent />
       </Suspense>
     </>

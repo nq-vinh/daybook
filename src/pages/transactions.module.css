@@ -232,6 +232,13 @@
   min-inline-size: 0;
 }
 
+@media (width >= 1280px) {
+  /* Lifts the shared ScrollRegion overflow so the sticky table header follows the page. */
+  [data-scroll-region].scroll {
+    overflow-x: visible;
+  }
+}
+
 .ledger td a {
   color: inherit;
   text-decoration-line: none;
@@ -264,10 +271,6 @@
 @media (width < 1280px) {
   .scroll .ledger tbody > tr {
     scroll-margin-block-start: 0;
-  }
-
-  .scroll {
-    overflow-x: auto;
   }
 
   .ledger {

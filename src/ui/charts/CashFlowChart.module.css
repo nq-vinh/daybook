@@ -1,6 +1,9 @@
 .figure {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
+  inline-size: 100%;
+  min-inline-size: 0;
   margin: 0;
 }
 
@@ -103,6 +106,7 @@
 
 .values dd {
   margin: 0;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
   text-align: end;
 }
@@ -111,14 +115,23 @@
   font-weight: var(--font-weight-strong);
 }
 
+.details,
+.tableScroll {
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
 .details summary {
   inline-size: max-content;
   cursor: pointer;
 }
 
+.tableScroll {
+  margin-block-start: var(--space-3);
+}
+
 .table {
   inline-size: 100%;
-  margin-block-start: var(--space-3);
   border-collapse: collapse;
   font-size: var(--text-sm);
 }
@@ -138,4 +151,5 @@
 .table .number {
   font-variant-numeric: tabular-nums;
   text-align: end;
+  white-space: nowrap;
 }

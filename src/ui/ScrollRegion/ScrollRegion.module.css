@@ -1,0 +1,12 @@
+.region {
+  max-inline-size: 100%;
+}
+
+.inline {
+  overflow-x: auto;
+}
+
+.block {
+  overflow-y: auto;
+  overflow-anchor: none;
+}

@@ -17,6 +17,7 @@
   font-weight: var(--font-weight-strong);
   line-height: var(--line-height-heading);
   letter-spacing: var(--letter-spacing-heading);
+  white-space: nowrap;
 }
 
 .delta {
@@ -26,6 +27,7 @@
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .delta:where([data-tone="positive"]) {

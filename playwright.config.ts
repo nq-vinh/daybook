@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 const port = 4180
 const baseURL = `http://127.0.0.1:${String(port)}`
-const desktop = {
+export const desktop = {
   ...devices['Desktop Chrome'],
   viewport: { width: 1440, height: 950 },
   deviceScaleFactor: 2,
@@ -22,7 +22,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: 'perf.spec.ts',
+      testIgnore: ['perf.spec.ts', 'screenshots.spec.ts'],
       use: desktop,
     },
     {

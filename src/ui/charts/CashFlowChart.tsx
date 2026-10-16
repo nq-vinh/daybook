@@ -3,9 +3,10 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent
 import { formatMoney, formatSignedMoney } from '../../domain/format'
 import type { Currency } from '../../domain/world'
 import { anchorName, anchorRef } from '../anchor'
+import { ScrollRegion } from '../ScrollRegion/ScrollRegion'
 import styles from './CashFlowChart.module.css'
 import { type CashFlowGeometry, drawCashFlow } from './drawCashFlow'
-import { type CashFlowMonth, cashFlowSummary, monthReadout } from './months'
+import { type CashFlowMonth, cashFlowSummaryParts, monthReadout } from './months'
 import { useCanvas } from './useCanvas'
 
 export interface CashFlowChartProps {
@@ -28,7 +29,8 @@ export function CashFlowChart({ months, currency, locale, caption = 'Net cash fl
   const id = useId()
   const valueId = `${id}-value`
   const anchor = anchorName('chart-cursor', id)
-  const summary = cashFlowSummary(months, currency, locale)
+  const summaryParts = cashFlowSummaryParts(months, currency, locale)
+  const summary = summaryParts.map((part) => part.text).join('')
   const [cursor, setCursor] = useState<number | null>(null)
   const [hover, setHover] = useState<number | null>(null)
   const [dismissedAt, setDismissedAt] = useState<number | null>(null)
@@ -145,7 +147,9 @@ export function CashFlowChart({ months, currency, locale, caption = 'Net cash fl
   return (
     <figure className={styles.figure}>
       <figcaption className={styles.caption}>{caption}</figcaption>
-      <p className={styles.summary}>{summary}</p>
+      <p className={styles.summary}>
+        {summaryParts.map((part, index) => (part.money ? <span key={index} className="money">{part.text}</span> : part.text))}
+      </p>
       <div ref={plotRef} className={styles.plot}>
         <canvas ref={canvasRef} className={styles.canvas} role="img" aria-label={summary} />
         <div className={styles.crosshair} hidden={month === undefined} data-chart-crosshair="" />
@@ -198,29 +202,31 @@ export function CashFlowChart({ months, currency, locale, caption = 'Net cash fl
       <p id={valueId} className="visually-hidden" aria-live="polite">{announcement}</p>
       <details className={styles.details}>
         <summary>Show as table</summary>
-        <table className={styles.table}>
-          <caption className="visually-hidden">{caption}</caption>
-          <thead>
-            <tr>
-              <th scope="col">Month</th>
-              <th scope="col" className={styles.number}>Income</th>
-              <th scope="col" className={styles.number}>Expense</th>
-              <th scope="col" className={styles.number}>Net</th>
-              <th scope="col">Forecast</th>
-            </tr>
-          </thead>
-          <tbody>
-            {months.map((entry) => (
-              <tr key={entry.start}>
-                <th scope="row">{entry.label}</th>
-                <td className={styles.number}>{money(entry.income)}</td>
-                <td className={styles.number}>{money(entry.expense)}</td>
-                <td className={styles.number}>{signed(entry.net)}</td>
-                <td>{KIND_LABELS[entry.kind]}</td>
+        <ScrollRegion label={`${caption}, table, scrolls sideways`} className={styles.tableScroll}>
+          <table className={styles.table}>
+            <caption className="visually-hidden">{caption}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Month</th>
+                <th scope="col" className={styles.number}>Income</th>
+                <th scope="col" className={styles.number}>Expense</th>
+                <th scope="col" className={styles.number}>Net</th>
+                <th scope="col">Forecast</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {months.map((entry) => (
+                <tr key={entry.start}>
+                  <th scope="row">{entry.label}</th>
+                  <td className={styles.number}>{money(entry.income)}</td>
+                  <td className={styles.number}>{money(entry.expense)}</td>
+                  <td className={styles.number}>{signed(entry.net)}</td>
+                  <td>{KIND_LABELS[entry.kind]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ScrollRegion>
       </details>
     </figure>
   )

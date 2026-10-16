@@ -1,6 +1,7 @@
-import { useId, useState, type ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 
 import { cx } from '../../ui/classes'
+import { ScrollRegion } from '../../ui/ScrollRegion/ScrollRegion'
 import styles from './design.module.css'
 
 export function cssProperties(properties: Readonly<Record<string, string>>) {
@@ -26,43 +27,6 @@ export function forceFocusOn(selector: string) {
   }
 }
 
-type ScrollRegionProps = { readonly children: ReactNode } & (
-  | { readonly label: string; readonly labelledBy?: undefined }
-  | { readonly labelledBy: string; readonly label?: undefined }
-)
-
-export function ScrollRegion({ label, labelledBy, children }: ScrollRegionProps) {
-  const [overflowing, setOverflowing] = useState(false)
-
-  function wrapperRef(wrapper: HTMLDivElement | null) {
-    if (wrapper === null || typeof ResizeObserver === 'undefined') {
-      return
-    }
-
-    const observer = new ResizeObserver(() => {
-      setOverflowing(wrapper.scrollWidth > wrapper.clientWidth)
-    })
-    observer.observe(wrapper)
-    if (wrapper.firstElementChild !== null) {
-      observer.observe(wrapper.firstElementChild)
-    }
-
-    return () => {
-      observer.disconnect()
-    }
-  }
-
-  if (!overflowing) {
-    return <div ref={wrapperRef} className={styles.scroll}>{children}</div>
-  }
-
-  return (
-    <div ref={wrapperRef} className={styles.scroll} role="region" aria-label={label} aria-labelledby={labelledBy} tabIndex={0}>
-      {children}
-    </div>
-  )
-}
-
 interface DataTableProps {
   readonly caption: string
   readonly hideCaption?: boolean | undefined
@@ -74,7 +38,7 @@ export function DataTable({ caption, hideCaption = false, className, children }:
   const captionId = useId()
 
   return (
-    <ScrollRegion labelledBy={captionId}>
+    <ScrollRegion labelledBy={captionId} className={styles.scroll}>
       <table className={className}>
         <caption id={captionId} className={hideCaption ? 'visually-hidden' : styles.caption}>{caption}</caption>
         {children}

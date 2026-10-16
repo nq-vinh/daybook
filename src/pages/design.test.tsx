@@ -52,7 +52,7 @@ describe('DesignPage', () => {
   it('gives every component in src/ui its own h3 under Components', async () => {
     const { components } = await renderLoaded()
 
-    expect(componentNames).toHaveLength(23)
+    expect(componentNames).toHaveLength(24)
 
     for (const name of componentNames) {
       const heading = document.getElementById(componentId(name))

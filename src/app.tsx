@@ -12,6 +12,7 @@ import { setHudVisible, useHudVisible } from './state/hud'
 import { DEFAULT_FILTER, parseFilter, serializeFilter } from './state/url'
 import { Icon } from './ui/Icon/Icon'
 import { IconButton } from './ui/IconButton/IconButton'
+import { cx } from './ui/classes'
 import { Select } from './ui/Select/Select'
 import { TextField } from './ui/TextField/TextField'
 import { ThemeSwitch } from './ui/ThemeSwitch/ThemeSwitch'
@@ -46,7 +47,7 @@ function AccountSwitcher({ account }: { readonly account: AccountId | null }) {
   return (
     <Select
       label="Account"
-      className={styles.headerField}
+      className={cx(styles.headerField, styles.account)}
       value={account ?? ''}
       onChange={(event) => {
         const { value } = event.target
@@ -108,7 +109,13 @@ function HeaderSearch({ onLedger, q, account, locationKey }: HeaderSearchProps) 
       }}
     >
       <TextField
-        label="Search transactions"
+        label={(
+          <>
+            Search
+            {' '}
+            <span className={styles.labelSuffix}>transactions</span>
+          </>
+        )}
         type="search"
         className={styles.headerField}
         value={draft}
@@ -138,11 +145,14 @@ export function App() {
             account={filter.account}
             locationKey={location.key}
           />
-          <ThemeSwitch className={styles.theme} />
-          <HudToggle />
+          <div className={styles.tools}>
+            <ThemeSwitch />
+            <HudToggle />
+          </div>
         </div>
         <nav className={styles.nav} aria-label="Main">
-          <ul className={styles.navList}>
+          {/* eslint-disable-next-line jsx-a11y/no-redundant-roles -- list-style none drops list semantics in WebKit */}
+          <ul className={styles.navList} role="list">
             {navigation.map(({ to, label }) => (
               <li key={to}>
                 <Link

@@ -5,7 +5,7 @@ import styles from './TextField.module.css'
 
 export interface TextFieldProps
   extends Omit<ComponentPropsWithRef<'input'>, 'prefix' | 'children' | 'aria-describedby' | 'aria-invalid'> {
-  readonly label: string
+  readonly label: ReactNode
   readonly description?: string | undefined
   readonly error?: string | undefined
   readonly prefix?: ReactNode
@@ -16,7 +16,7 @@ export interface TextFieldProps
 
 export interface MultilineTextFieldProps
   extends Omit<ComponentPropsWithRef<'textarea'>, 'children' | 'aria-describedby' | 'aria-invalid'> {
-  readonly label: string
+  readonly label: ReactNode
   readonly description?: string | undefined
   readonly error?: string | undefined
   readonly multiline: true

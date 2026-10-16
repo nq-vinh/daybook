@@ -1,5 +1,3 @@
-import { type ReactNode, useState } from 'react'
-
 import { formatDate } from '../../domain/format'
 import { transaction } from '../../domain/transactions'
 import type { Currency } from '../../domain/world'
@@ -7,6 +5,7 @@ import { navigate } from '../../router/history'
 import { Link } from '../../router/link'
 import type { SettledStatus } from '../../state/feed'
 import type { SortColumn, SortDirection } from '../../state/url'
+import { ScrollRegion } from '../../ui/ScrollRegion/ScrollRegion'
 import { Table, type TableColumn, type TableSort } from '../../ui/Table/Table'
 import styles from '../transactions.module.css'
 import type { BalanceRows } from './balances'
@@ -89,36 +88,6 @@ const baseColumns: TableColumn<number, SettledStatus>[] = [
   },
 ]
 
-function ScrollRegion({ children }: { readonly children: ReactNode }) {
-  const [overflowing, setOverflowing] = useState(false)
-
-  function wrapperRef(wrapper: HTMLDivElement | null) {
-    if (wrapper === null || typeof ResizeObserver === 'undefined') {
-      return
-    }
-    const observer = new ResizeObserver(() => {
-      setOverflowing(wrapper.scrollWidth > wrapper.clientWidth)
-    })
-    observer.observe(wrapper)
-    if (wrapper.firstElementChild !== null) {
-      observer.observe(wrapper.firstElementChild)
-    }
-    return () => {
-      observer.disconnect()
-    }
-  }
-
-  if (!overflowing) {
-    return <div ref={wrapperRef} className={styles.scroll}>{children}</div>
-  }
-
-  return (
-    <div ref={wrapperRef} className={styles.scroll} role="region" aria-label="Ledger, scrolls sideways" tabIndex={0}>
-      {children}
-    </div>
-  )
-}
-
 function identity(id: number): number {
   return id
 }
@@ -137,7 +106,7 @@ export function Ledger({ ids, sortColumn, sortDir, balances, balanceCurrency, se
       ]
 
   return (
-    <ScrollRegion>
+    <ScrollRegion label="Ledger, scrolls sideways" className={styles.scroll}>
       <Table
         caption="Ledger"
         hideCaption

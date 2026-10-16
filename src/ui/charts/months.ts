@@ -32,26 +32,49 @@ export function axisLabel(month: CashFlowMonth, locale: string, first = false): 
   return [short, first || new Date(month.start).getUTCMonth() === 0 ? formatDate(month.start, locale, { year: 'numeric' }) : null]
 }
 
-export function cashFlowSummary(months: readonly CashFlowMonth[], currency: Currency, locale: string): string {
+export interface SummaryPart {
+  readonly text: string
+  readonly money: boolean
+}
+
+export function cashFlowSummaryParts(months: readonly CashFlowMonth[], currency: Currency, locale: string): readonly SummaryPart[] {
   const complete = months.filter((month) => month.kind === 'complete')
   const projected = months.filter((month) => month.kind === 'forecast')
-  const money = (value: number): string => formatSignedMoney(value, currency, locale)
+  const text = (value: string): SummaryPart => ({ text: value, money: false })
+  const money = (value: number): SummaryPart => ({ text: formatSignedMoney(value, currency, locale), money: true })
   const first = complete[0]
   const last = complete.at(-1)
 
   if (first === undefined || last === undefined) {
-    return 'Net cash flow: no complete months yet.'
+    return [text('Net cash flow: no complete months yet.')]
   }
 
-  const history = `Net cash flow over the last ${String(complete.length)} months: from ${money(first.net)} in ${first.label} to ${money(last.net)} in ${last.label}`
+  const history = [
+    text(`Net cash flow over the last ${String(complete.length)} months: from `),
+    money(first.net),
+    text(` in ${first.label} to `),
+    money(last.net),
+    text(` in ${last.label}`),
+  ]
   const nextFirst = projected[0]
   const nextLast = projected.at(-1)
 
   if (nextFirst === undefined || nextLast === undefined) {
-    return `${history}.`
+    return [...history, text('.')]
   }
 
-  return `${history}; forecast ${money(nextFirst.net)} to ${money(nextLast.net)} for the next ${String(projected.length)} months.`
+  return [
+    ...history,
+    text('; forecast '),
+    money(nextFirst.net),
+    text(' to '),
+    money(nextLast.net),
+    text(` for the next ${String(projected.length)} months.`),
+  ]
+}
+
+export function cashFlowSummary(months: readonly CashFlowMonth[], currency: Currency, locale: string): string {
+  return cashFlowSummaryParts(months, currency, locale).map((part) => part.text).join('')
 }
 
 export function monthReadout(month: CashFlowMonth, currency: Currency, locale: string): string {

@@ -46,7 +46,7 @@ export function FieldError({ id, error }: FieldErrorProps) {
 
 interface FieldProps {
   readonly ids: FieldIds
-  readonly label: string
+  readonly label: ReactNode
   readonly description: string | undefined
   readonly error: string | undefined
   readonly className: string | undefined

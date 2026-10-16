@@ -40,7 +40,8 @@ describe('CashFlowChart', () => {
       + 'forecast -€200.00 to +€1,000.00 for the next 3 months.'
 
     expect(figure.querySelector('figcaption')).toHaveTextContent('Net cash flow by month')
-    expect(within(figure).getByText(summary).tagName).toBe('P')
+    const paragraph = within(figure).getByText((_, element) => element?.tagName === 'P' && element.textContent === summary)
+    expect(paragraph.querySelectorAll('.money')).toHaveLength(4)
     expect(within(figure).getByRole('img', { name: summary }).tagName).toBe('CANVAS')
     expect(within(figure).getByText('Show as table').tagName).toBe('SUMMARY')
 

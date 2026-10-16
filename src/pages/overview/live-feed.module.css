@@ -1,8 +1,9 @@
 .card {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
-  max-inline-size: 36rem;
-  margin-block-start: var(--space-8);
+  align-self: start;
+  block-size: var(--overview-flow-height);
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-md);
   border: var(--border-raised);
@@ -11,19 +12,40 @@
 }
 
 .header {
-  display: flex;
+  display: grid;
+  grid-template-areas:
+    "title title"
+    "show pause";
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
 }
 
 .header h2 {
+  grid-area: title;
   margin: 0;
+}
+
+.show {
+  grid-area: show;
+  justify-self: start;
+}
+
+.pause {
+  grid-area: pause;
 }
 
 .pressed {
   text-decoration: underline var(--rule-width-strong) var(--color-accent);
   text-underline-offset: var(--space-1);
+}
+
+.card .scroller {
+  flex: 0 1 auto;
+  min-block-size: 0;
+  max-inline-size: none;
+  margin-inline: calc(-1 * var(--space-2));
+  border-radius: var(--radius-sm);
 }
 
 .list {
@@ -40,7 +62,6 @@
   gap: var(--space-1) var(--space-3);
   padding-block: var(--space-2);
   padding-inline: var(--space-2);
-  margin-inline: calc(-1 * var(--space-2));
   border-block-end: var(--rule-width) solid var(--color-border);
 }
 
@@ -79,6 +100,12 @@
 
   to {
     background-color: transparent;
+  }
+}
+
+@media (width < 900px) {
+  .card {
+    block-size: var(--overview-feed-height);
   }
 }
 

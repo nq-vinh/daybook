@@ -41,6 +41,10 @@ function feedItems(page: Page) {
   return page.getByRole('list', { name: 'Settled payments, newest first' }).getByRole('listitem')
 }
 
+async function showNewPayments(page: Page, count: number): Promise<void> {
+  await page.getByRole('button', { name: count === 1 ? 'Show 1 new payment' : `Show ${String(count)} new payments` }).click()
+}
+
 async function pauseAtPageTime(page: Page): Promise<void> {
   const pageNow = await page.evaluate(() => Date.now())
   await page.clock.pauseAt(pageNow + PAUSE_MARGIN_MS)
@@ -62,6 +66,8 @@ test('shows the exact fifth feed event', async ({ page }) => {
 
   await page.clock.runFor(Math.floor((fifthOffset + latestBeforeSixth) / 2))
 
+  await expect(feedItems(page)).toHaveCount(1)
+  await showNewPayments(page, 4)
   await expect(feedItems(page)).toHaveCount(5)
   const fifth = rendered(feedEvent(4))
   const item = feedItems(page).first()
@@ -80,17 +86,18 @@ test('defers an announcement inside the 5 s window and changes the live region a
   const after = feedEvent(burst)
   await openOverviewWithPausedClock(page)
   const card = page.getByRole('region', { name: 'Incoming payments' })
-  const changes: { readonly at: number; readonly text: string; readonly newest: string | null }[] = []
+  const changes: { readonly at: number; readonly text: string; readonly newest: string | null; readonly buffered: number }[] = []
   let previous = ''
 
   for (let elapsed = STEP_MS; elapsed <= after.offset + ANNOUNCE_INTERVAL_MS; elapsed += STEP_MS) {
     await page.clock.runFor(STEP_MS)
-    const { text, newest } = await card.evaluate((section) => ({
+    const { text, newest, buffered } = await card.evaluate((section) => ({
       text: section.querySelector('[role="status"]')?.textContent ?? '',
       newest: section.querySelector('li')?.getAttribute('data-feed-id') ?? null,
+      buffered: Number(/\d+/.exec(section.querySelector('button:not([aria-pressed])')?.textContent ?? '')?.[0] ?? 0),
     }))
     if (text !== previous) {
-      changes.push({ at: elapsed, text, newest })
+      changes.push({ at: elapsed, text, newest, buffered })
       previous = text
     }
   }
@@ -99,7 +106,8 @@ test('defers an announcement inside the 5 s window and changes the live region a
   const deferred = changes.at(-1)
   const preceding = changes.at(-2)
   expect(deferred?.text).toBe(rendered(after).announcement)
-  expect(preceding?.newest).toBe(String(before.id))
+  expect(preceding?.newest).toBe(String(feedEvent(0).id))
+  expect(preceding?.buffered).toBe(burst - 1)
   expect(preceding?.text).toBe(rendered(before).announcement)
   expect(after.offset - before.offset).toBeLessThan(ANNOUNCE_INTERVAL_MS)
   for (let position = 1; position < changes.length; position += 1) {
@@ -124,6 +132,8 @@ test('pauses and resumes the feed with a pressed toggle', async ({ page }) => {
   await toggle.click()
   await expect(toggle).toHaveAttribute('aria-pressed', 'false')
   await page.clock.runFor(feedEvent(1).offset - feedEvent(0).offset)
+  await expect(feedItems(page)).toHaveCount(1)
+  await showNewPayments(page, 1)
   await expect(feedItems(page)).toHaveCount(2)
   await expect(feedItems(page).first()).toHaveAttribute('data-feed-id', String(feedEvent(1).id))
 })
@@ -169,6 +179,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
     await openOverviewWithPausedClock(page)
     await page.clock.runFor(feedEvent(2).offset)
+    await showNewPayments(page, 2)
     await expect(feedItems(page)).toHaveCount(3)
     await page.clock.resume()
 

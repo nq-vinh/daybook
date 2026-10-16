@@ -1,0 +1,31 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "npm run preview -- --host 127.0.0.1 --port 4181 --strictPort",
+      "startServerReadyPattern": "Local",
+      "url": [
+        "http://127.0.0.1:4181/",
+        "http://127.0.0.1:4181/transactions",
+        "http://127.0.0.1:4181/design"
+      ],
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "desktop"
+      }
+    },
+    "assert": {
+      "aggregationMethod": "median-run",
+      "assertions": {
+        "categories:performance": ["error", { "minScore": 1 }],
+        "categories:accessibility": ["error", { "minScore": 1 }],
+        "categories:best-practices": ["error", { "minScore": 1 }],
+        "categories:seo": ["error", { "minScore": 1 }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0 }]
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": "output/lighthouse"
+    }
+  }
+}

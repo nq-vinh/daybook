@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 
-const BUDGET_GZIP_BYTES = 89 * 1024
+const BUDGET_GZIP_BYTES = 85 * 1024
 const ALLOWED_DEPENDENCIES = ['react', 'react-dom']
 
 const projectRoot = fileURLToPath(new URL('..', import.meta.url))

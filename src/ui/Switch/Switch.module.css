@@ -58,11 +58,7 @@
   background: var(--color-accent);
 }
 
-.input:where(:checked) + .track .track:dir(rtl) {
-  --switch-thumb-travel: calc(-1 * var(--space-4));
-}
-
-.thumb {
+.input:where(:checked) + .track .thumb {
   background: var(--color-accent-contrast);
   translate: var(--switch-thumb-travel) 0;
 }

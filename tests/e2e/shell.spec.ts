@@ -1,6 +1,9 @@
 import AxeBuilder from '@axe-core/playwright'
+import type { Page } from '@playwright/test'
 
 import { expect, test } from './fixtures'
+
+const announcer = (page: Page) => page.locator('p[role="status"]')
 
 const routes = [
   { path: '/', heading: 'Overview' },
@@ -34,12 +37,12 @@ test('the skip link moves focus to main', async ({ page }) => {
 
 test('a link click announces the page and focuses its heading', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('status')).toHaveText('')
+  await expect(announcer(page)).toHaveText('')
 
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Transactions' }).click()
 
   await expect(page).toHaveURL('/transactions')
-  await expect(page.getByRole('status')).toHaveText('Transactions')
+  await expect(announcer(page)).toHaveText('Transactions')
   await expect(page.getByRole('heading', { level: 1, name: 'Transactions' })).toBeFocused()
   await expect(page.getByRole('link', { name: 'Transactions' })).toHaveAttribute('aria-current', 'page')
 })
@@ -51,7 +54,7 @@ test('back restores the previous page', async ({ page }) => {
 
   await page.goBack()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Overview')
-  await expect(page.getByRole('status')).toHaveText('Overview')
+  await expect(announcer(page)).toHaveText('Overview')
 })
 
 for (const colorScheme of ['light', 'dark'] as const) {

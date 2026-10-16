@@ -16,9 +16,11 @@ import {
   type CounterpartyId,
   type Currency,
   CURRENCIES,
+  type ExpenseCategoryId,
+  monthStart,
 } from '../domain/world'
 import { type FilterSort, type FilterState, isoDayEnd, isoDayStart, type SortColumn, STATUSES } from '../state/url'
-import type { CategoryEdit, LedgerResult, LedgerSeries } from './protocol'
+import type { BudgetSpend, CardSpend, CategoryEdit, FeedSettlement, LedgerResult, LedgerSeries } from './protocol'
 
 interface SortOrder {
   readonly ids: Int32Array
@@ -36,6 +38,7 @@ export interface LedgerIndex {
   readonly counterparty: Uint8Array
   readonly currency: Uint8Array
   readonly status: Uint8Array
+  readonly originalStatus: Uint8Array
   readonly category: Uint8Array
   readonly originalCategory: Uint8Array
   readonly haystack: readonly string[]
@@ -45,6 +48,12 @@ export interface LedgerIndex {
 
 const NO_CARD = 0
 const DECLINED = STATUSES.indexOf('declined')
+const SHARE_MONTHS = 3
+const MONTH_TO_DATE_START = monthStart(COMPLETE_MONTHS)
+const SHARE_START = monthStart(COMPLETE_MONTHS - SHARE_MONTHS)
+const EXPENSE_CATEGORIES = CATEGORIES.filter(
+  (entry): entry is Extract<(typeof CATEGORIES)[number], { kind: 'expense' }> => entry.kind === 'expense',
+).map((entry) => entry.id)
 
 function codes(ids: readonly string[], offset = 0): ReadonlyMap<string, number> {
   return new Map(ids.map((id, position) => [id, position + offset]))
@@ -117,6 +126,7 @@ export function buildLedgerIndex(size = TRANSACTION_COUNT): LedgerIndex {
     counterparty,
     currency,
     status,
+    originalStatus: status.slice(),
     category,
     originalCategory: category.slice(),
     haystack,
@@ -292,6 +302,59 @@ export function applyCategoryEdits(index: LedgerIndex, edits: readonly CategoryE
     }
   }
   index.orders.delete('category')
+}
+
+export function applyFeedSettlements(index: LedgerIndex, settled: readonly FeedSettlement[]): void {
+  index.status.set(index.originalStatus)
+  for (const [id, status] of settled) {
+    const code = STATUS_CODES.get(status)
+    if (Number.isInteger(id) && id >= 0 && id < index.size && code !== undefined) {
+      index.status[id] = code
+    }
+  }
+  index.orders.delete('status')
+}
+
+function isSpend(index: LedgerIndex, id: number): boolean {
+  return index.status[id] !== DECLINED && (index.amount[id] ?? 0) < 0
+}
+
+export function cardSpend(index: LedgerIndex): CardSpend[] {
+  const totals = new Array<number>(CARDS.length + 1).fill(0)
+  for (let id = 0; id < index.size; id += 1) {
+    const card = index.card[id] ?? NO_CARD
+    if (card !== NO_CARD && (index.bookedAt[id] ?? 0) >= MONTH_TO_DATE_START && isSpend(index, id)) {
+      totals[card] = (totals[card] ?? 0) - (index.amountInAccount[id] ?? 0)
+    }
+  }
+  return CARDS.map((card) => ({
+    cardId: card.id,
+    monthToDate: totals[codeOf(CARD_CODES, card.id)] ?? 0,
+    currency: accountCurrency(card.accountId),
+  }))
+}
+
+export function budgetSpend(index: LedgerIndex): BudgetSpend[] {
+  const monthToDate = new Array<number>(CATEGORIES.length).fill(0)
+  const recent = new Array<number>(CATEGORIES.length).fill(0)
+  for (let id = 0; id < index.size; id += 1) {
+    const bookedAt = index.bookedAt[id] ?? 0
+    if (bookedAt >= SHARE_START && isSpend(index, id)) {
+      const category = index.category[id] ?? 0
+      const totals = bookedAt >= MONTH_TO_DATE_START ? monthToDate : recent
+      totals[category] = (totals[category] ?? 0) - (index.amountInEur[id] ?? 0)
+    }
+  }
+  const codesOf = EXPENSE_CATEGORIES.map((categoryId) => codeOf(CATEGORY_CODES, categoryId))
+  const recentTotal = codesOf.reduce((sum, code) => sum + (recent[code] ?? 0), 0)
+  return EXPENSE_CATEGORIES.map((categoryId: ExpenseCategoryId, position) => {
+    const code = codesOf[position] ?? 0
+    return {
+      categoryId,
+      monthToDate: monthToDate[code] ?? 0,
+      share: recentTotal === 0 ? 0 : (recent[code] ?? 0) / recentTotal,
+    }
+  })
 }
 
 export function counterpartyHistory(

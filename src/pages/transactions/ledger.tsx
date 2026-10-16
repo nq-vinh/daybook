@@ -1,21 +1,23 @@
 import { type ReactNode, useState } from 'react'
 
-import { formatDate, formatMoney } from '../../domain/format'
+import { formatDate } from '../../domain/format'
 import { transaction } from '../../domain/transactions'
 import type { Currency } from '../../domain/world'
 import { navigate } from '../../router/history'
 import { Link } from '../../router/link'
+import type { SettledStatus } from '../../state/feed'
 import type { SortColumn, SortDirection } from '../../state/url'
 import { Table, type TableColumn, type TableSort } from '../../ui/Table/Table'
 import styles from '../transactions.module.css'
-import { Amount, CategoryLabel, counterpartyName, Status, transactionHref } from './cells'
+import type { BalanceRows } from './balances'
+import { Amount, Balance, CategoryLabel, counterpartyName, feedRows, Status, transactionHref } from './cells'
 import { SELECTION_LIMIT, writeFilter } from './filters'
 
 export interface LedgerProps {
   readonly ids: Int32Array
   readonly sortColumn: SortColumn
   readonly sortDir: SortDirection
-  readonly balances: ReadonlyMap<number, number> | null
+  readonly balances: BalanceRows | null
   readonly balanceCurrency: Currency | null
   readonly selection: ReadonlySet<number>
   readonly onSelectionChange: (selection: ReadonlySet<number>) => void
@@ -60,7 +62,7 @@ function openDetail(id: number): void {
   navigate(transactionHref(id))
 }
 
-const baseColumns: TableColumn<number>[] = [
+const baseColumns: TableColumn<number, SettledStatus>[] = [
   { key: 'bookedAt', header: 'Date', cell: (id) => formatDate(transaction(id).bookedAt), sortable: true },
   {
     key: 'counterparty',
@@ -70,9 +72,21 @@ const baseColumns: TableColumn<number>[] = [
     truncate: true,
   },
   { key: 'category', header: 'Category', cell: (id) => <CategoryLabel id={id} />, sortable: true, truncate: true },
-  { key: 'status', header: 'Status', cell: (id) => <Status id={id} />, sortable: true },
-  { key: 'debit', header: 'Debit', cell: (id) => <Amount id={id} side="debit" />, numeric: true, sortable: true },
-  { key: 'credit', header: 'Credit', cell: (id) => <Amount id={id} side="credit" />, numeric: true, sortable: true },
+  { key: 'status', header: 'Status', cell: (id, settled) => <Status id={id} settled={settled} />, sortable: true },
+  {
+    key: 'debit',
+    header: 'Debit',
+    cell: (id, settled) => <Amount id={id} side="debit" settled={settled} />,
+    numeric: true,
+    sortable: true,
+  },
+  {
+    key: 'credit',
+    header: 'Credit',
+    cell: (id, settled) => <Amount id={id} side="credit" settled={settled} />,
+    numeric: true,
+    sortable: true,
+  },
 ]
 
 function ScrollRegion({ children }: { readonly children: ReactNode }) {
@@ -118,10 +132,7 @@ export function Ledger({ ids, sortColumn, sortDir, balances, balanceCurrency, se
           key: 'balance',
           header: 'Balance',
           numeric: true,
-          cell: (id: number) => {
-            const balance = balances.get(id)
-            return balance === undefined ? null : formatMoney(balance, balanceCurrency)
-          },
+          cell: (id: number) => <Balance id={id} rows={balances} currency={balanceCurrency} />,
         },
       ]
 
@@ -135,6 +146,7 @@ export function Ledger({ ids, sortColumn, sortDir, balances, balanceCurrency, se
         rows={ids}
         getRowKey={identity}
         getRowLabel={rowLabel}
+        rowState={feedRows}
         sort={tableSort(sortColumn, sortDir)}
         onSortChange={changeSort}
         selectable

@@ -6,6 +6,7 @@ import { fakeClient, type PendingQuery } from '../../tests/unit/fake-ledger-clie
 import { transaction } from '../domain/transactions'
 import type { LedgerResult } from '../worker/protocol'
 import { setCategory, setNote } from './edits'
+import { deliverForTest, FEED_EVENTS, stopFeed } from './feed'
 import { useLedgerQuery } from './query'
 import { DEFAULT_FILTER } from './url'
 
@@ -46,6 +47,7 @@ class Boundary extends Component<{ readonly children?: ReactNode; readonly onErr
 
 afterEach(() => {
   vi.restoreAllMocks()
+  stopFeed()
 })
 
 describe('useLedgerQuery', () => {
@@ -176,6 +178,27 @@ describe('useLedgerQuery', () => {
     act(() => {
       setNote(id, '')
     })
+  })
+
+  it('re-posts the query on a feed settlement without marking the result stale and keeps equal ids', async () => {
+    const { client, calls } = fakeClient()
+    const { result: hook } = renderHook(() => useLedgerQuery(DEFAULT_FILTER, client))
+    await respond(calls[0], result(1, 2))
+    const landedIds = hook.current.ids
+    const [settlement] = FEED_EVENTS
+    if (settlement === undefined) {
+      throw new Error('Expected a feed event.')
+    }
+
+    act(() => {
+      deliverForTest(settlement)
+    })
+    expect(calls).toHaveLength(2)
+    expect(hook.current.isStale).toBe(false)
+
+    await respond(calls[1], { ...result(1, 2), totals: { count: 2, debits: 5, credits: 0, net: -5, currency: 'EUR' } })
+    expect(hook.current.ids).toBe(landedIds)
+    expect(hook.current.totals.debits).toBe(5)
   })
 
   it('re-throws a failed query for the nearest error boundary', async () => {

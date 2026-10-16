@@ -66,6 +66,7 @@
   --radius-md: 6px;
   --radius-full: 9999px;
 
+  --border-raised: var(--rule-width) solid transparent;
   --shadow-raised:
     0 1px 2px light-dark(rgb(21 24 26 / 0.08), rgb(0 0 0 / 0.4)),
     0 8px 24px light-dark(rgb(21 24 26 / 0.12), rgb(0 0 0 / 0.55));
@@ -132,6 +133,7 @@
   :root {
     --color-surface: Canvas;
     --color-surface-raised: Canvas;
+    --border-raised: var(--rule-width) solid CanvasText;
     --color-surface-sunken: Canvas;
     --color-text: CanvasText;
     --color-text-muted: CanvasText;

@@ -1,29 +1,79 @@
 import { accountAmount, transaction } from '../../domain/transactions'
 import { type AccountId, ACCOUNTS, type Currency } from '../../domain/world'
+import { type FeedEvent, getEvents, getRowOverride, subscribeEvents } from '../../state/feed'
 import { parseFilter } from '../../state/url'
 import { hasNarrowingFilters } from './filters'
 
+export interface BalanceRows {
+  readonly subscribe: (id: number, listener: () => void) => () => void
+  readonly get: (id: number) => number | undefined
+}
+
 export interface LedgerResultView {
   readonly ids: Int32Array
-  readonly balances: ReadonlyMap<number, number> | null
+  readonly balances: BalanceRows | null
   readonly balanceCurrency: Currency | null
   readonly balanceKey: string | null
 }
 
-function runningBalances(ids: Int32Array, accountId: AccountId, newestFirst: boolean): ReadonlyMap<number, number> {
-  const account = ACCOUNTS.find((candidate) => candidate.id === accountId)
-  const balances = new Map<number, number>()
-  let balance: number = account?.openingBalance ?? 0
+export function runningBalances(ids: Int32Array, accountId: AccountId, newestFirst: boolean): BalanceRows {
+  const opening = ACCOUNTS.find((candidate) => candidate.id === accountId)?.openingBalance ?? 0
+  const order = Int32Array.from({ length: ids.length }, (_, step) => ids[newestFirst ? ids.length - 1 - step : step] ?? 0)
+  const amounts = Float64Array.from(order, (id) => accountAmount(transaction(id)))
+  const listeners = new Map<number, Set<() => void>>()
+  let balances: ReadonlyMap<number, number> = new Map()
+  let computedFor: readonly FeedEvent[] | null = null
+  let unsubscribeFeed: (() => void) | null = null
 
-  for (let step = 0; step < ids.length; step += 1) {
-    const id = ids[newestFirst ? ids.length - 1 - step : step]
-    if (id !== undefined) {
-      balance += accountAmount(transaction(id))
-      balances.set(id, balance)
+  function current(): ReadonlyMap<number, number> {
+    const events = getEvents()
+    if (events !== computedFor) {
+      computedFor = events
+      const next = new Map<number, number>()
+      let balance = opening
+      order.forEach((id, position) => {
+        balance += getRowOverride(id) === 'declined' ? 0 : (amounts[position] ?? 0)
+        next.set(id, balance)
+      })
+      balances = next
+    }
+    return balances
+  }
+
+  function settle(): void {
+    const previous = balances
+    const next = current()
+    for (const [id, registered] of listeners) {
+      if (previous.get(id) !== next.get(id)) {
+        for (const listener of [...registered]) {
+          listener()
+        }
+      }
     }
   }
 
-  return balances
+  return {
+    subscribe(id, listener) {
+      current()
+      unsubscribeFeed ??= subscribeEvents(settle)
+      const registered = listeners.get(id) ?? new Set<() => void>()
+      listeners.set(id, registered)
+      registered.add(listener)
+      return () => {
+        registered.delete(listener)
+        if (registered.size === 0 && listeners.get(id) === registered) {
+          listeners.delete(id)
+        }
+        if (listeners.size === 0) {
+          unsubscribeFeed?.()
+          unsubscribeFeed = null
+        }
+      }
+    },
+    get(id) {
+      return current().get(id)
+    },
+  }
 }
 
 export function balanceKey(landedSearch: string | null): string | null {

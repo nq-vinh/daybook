@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Profiler, type ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type PendingQuery, sharedLedgerClient } from '../../tests/unit/fake-ledger-client'
 import { App } from '../app'
@@ -11,6 +11,7 @@ import { ACCOUNTS } from '../domain/world'
 import { navigate } from '../router/history'
 import { RouterProvider } from '../router/router'
 import { getEdits, setCategories } from '../state/edits'
+import { deliverForTest, FEED_EVENTS, type FeedEvent, stopFeed } from '../state/feed'
 import type { TableRowProps } from '../ui/Table/TableRow'
 import type { LedgerResult } from '../worker/protocol'
 import { notFound, routes } from './routes'
@@ -58,10 +59,16 @@ vi.mock('../ui/Table/TableRow', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../ui/Table/TableRow')>()
   return {
     ...actual,
-    TableRow: (props: TableRowProps<number, number>) => {
-      profile.rows += 1
-      return <actual.TableRow {...props} />
-    },
+    TableRow: (props: TableRowProps<number, number>) => (
+      <Profiler
+        id="row"
+        onRender={() => {
+          profile.rows += 1
+        }}
+      >
+        <actual.TableRow {...props} />
+      </Profiler>
+    ),
   }
 })
 
@@ -467,5 +474,101 @@ describe('TransactionsPage', () => {
 
     await user.click(screen.getByRole('link', { name: 'Cards' }))
     expect(field).toHaveValue('')
+  })
+})
+
+describe('TransactionsPage live feed', () => {
+  afterEach(() => {
+    stopFeed()
+  })
+
+  function feedEvent(position: number): FeedEvent {
+    const found = FEED_EVENTS[position]
+    if (found === undefined) {
+      throw new RangeError(`No feed event ${String(position)}`)
+    }
+    return found
+  }
+
+  function windowWith(first: number, excluded: number): number[] {
+    return [first, ...findIds((id) => id !== first && id !== excluded, 39)]
+  }
+
+  it('commits exactly one row and the ledger once when a payment in the window settles, then the totals', async () => {
+    const settled = feedEvent(0)
+    const ids = windowWith(settled.id, settled.id)
+    await renderLedger('', resultOf(ids))
+    const [row] = bodyRows()
+    if (row === undefined) {
+      throw new Error('Expected a rendered row.')
+    }
+    expect(within(row).getByText('Pending')).toBeInTheDocument()
+    const posted = calls.length
+    resetProfile()
+
+    act(() => {
+      deliverForTest(settled)
+    })
+
+    expect(profile.rows).toBe(1)
+    expect(profile.commits.ledger).toBe(1)
+    expect(profile.commits.sidebar).toBe(0)
+    expect(within(row).queryByText('Pending')).toBeNull()
+    expect(row.querySelector(`.${cellStyles.pending ?? ''}`)).toBeNull()
+    expect(calls).toHaveLength(posted + 1)
+
+    const same = resultOf(ids)
+    await respond(latestCall(), { ...same, totals: { ...same.totals, credits: 99_999 } })
+
+    expect(profile.rows).toBe(1)
+    expect(profile.commits.ledger).toBe(1)
+    expect(profile.commits.totals).toBeGreaterThan(0)
+    expect(screen.getByText('Credits', { selector: 'dt' }).parentElement).toHaveTextContent(formatMoney(99_999, 'EUR'))
+  })
+
+  it('commits exactly the rows whose running balance changes when a payment is declined under the Balance column', async () => {
+    const declined = FEED_EVENTS.find((entry) => entry.status === 'declined')
+    if (declined === undefined) {
+      throw new Error('Expected a declined feed event.')
+    }
+    const { accountId } = transaction(declined.id)
+    const position = 5
+    const others = findIds((id) => id !== declined.id && transaction(id).accountId === accountId, 39)
+    const ids = [...others.slice(0, position), declined.id, ...others.slice(position)]
+    await renderLedger(`?account=${accountId}`, resultOf(ids))
+    expect(screen.getByRole('columnheader', { name: 'Balance' })).toBeInTheDocument()
+    const balanceTexts = () => bodyRows().map((row) => [...row.querySelectorAll('td')].at(-1)?.textContent ?? '')
+    const before = balanceTexts()
+    resetProfile()
+
+    act(() => {
+      deliverForTest(declined)
+    })
+
+    const after = balanceTexts()
+    const changed = after.filter((text, index) => text !== before[index]).length
+    expect(changed).toBe(position + 1)
+    expect(profile.rows).toBe(changed)
+    expect(profile.commits.ledger).toBe(1)
+    expect(within(bodyRows()[position] ?? document.body).getByText('Declined')).toBeInTheDocument()
+  })
+
+  it('commits no row and no ledger render when the settled payment is outside the window', async () => {
+    const settled = feedEvent(1)
+    const ids = windowWith(feedEvent(0).id, settled.id)
+    await renderLedger('', resultOf(ids))
+    const posted = calls.length
+    resetProfile()
+
+    act(() => {
+      deliverForTest(settled)
+    })
+    const same = resultOf(ids)
+    await respond(latestCall(), { ...same, totals: { ...same.totals, credits: 99_999 } })
+
+    expect(calls).toHaveLength(posted + 1)
+    expect(profile.rows).toBe(0)
+    expect(profile.commits.ledger).toBe(0)
+    expect(profile.commits.totals).toBeGreaterThan(0)
   })
 })

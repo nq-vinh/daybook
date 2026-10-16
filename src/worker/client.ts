@@ -1,9 +1,13 @@
 import type { AccountId, CounterpartyId } from '../domain/world'
 import { categoryEditEntries, type Edits, getEdits, subscribeEdits } from '../state/edits'
+import { getEvents, settlements, subscribeEvents } from '../state/feed'
 import type { FilterState } from '../state/url'
 import {
   assertNever,
+  type BudgetSpend,
+  type CardSpend,
   type CategoryEdit,
+  type FeedSettlement,
   type LedgerRequest,
   type LedgerResponse,
   type LedgerResult,
@@ -26,7 +30,10 @@ export interface LedgerClient {
   query(filter: FilterState, channel: string): Promise<LedgerResult | null>
   history(counterpartyId: CounterpartyId, limit: number, exclude: number): Promise<Int32Array<ArrayBuffer>>
   series(accountId: AccountId | null): Promise<LedgerSeries>
+  cards(): Promise<readonly CardSpend[]>
+  budgets(): Promise<readonly BudgetSpend[]>
   setEdits(categories: readonly CategoryEdit[]): void
+  setFeed(settled: readonly FeedSettlement[]): void
   ready(): Promise<void>
   terminate(): void
 }
@@ -40,6 +47,8 @@ type Pending =
   }
   | { readonly kind: 'history'; readonly resolve: (ids: Int32Array<ArrayBuffer>) => void; readonly reject: (reason: Error) => void }
   | { readonly kind: 'series'; readonly resolve: (series: LedgerSeries) => void; readonly reject: (reason: Error) => void }
+  | { readonly kind: 'cards'; readonly resolve: (cards: readonly CardSpend[]) => void; readonly reject: (reason: Error) => void }
+  | { readonly kind: 'budgets'; readonly resolve: (budgets: readonly BudgetSpend[]) => void; readonly reject: (reason: Error) => void }
 
 interface Connection {
   readonly worker: LedgerWorker
@@ -52,6 +61,7 @@ export function createLedgerClient(spawn: LedgerWorkerFactory): LedgerClient {
   const pending = new Map<number, Pending>()
   let connection: Connection | null = null
   let edits: readonly CategoryEdit[] = []
+  let feed: readonly FeedSettlement[] = []
   let nextRequestId = 1
 
   function stop(reason: Error, supersedeQueries: boolean): void {
@@ -109,6 +119,20 @@ export function createLedgerClient(spawn: LedgerWorkerFactory): LedgerClient {
         }
         return
       }
+      case 'cards': {
+        const request = settle(response.requestId, 'cards')
+        if (request?.kind === 'cards') {
+          request.resolve(response.cards)
+        }
+        return
+      }
+      case 'budgets': {
+        const request = settle(response.requestId, 'budgets')
+        if (request?.kind === 'budgets') {
+          request.resolve(response.budgets)
+        }
+        return
+      }
       default:
         assertNever(response)
     }
@@ -129,6 +153,9 @@ export function createLedgerClient(spawn: LedgerWorkerFactory): LedgerClient {
     connection = { worker, ready, resolveReady, rejectReady }
     if (edits.length > 0) {
       worker.post({ type: 'edits', categories: edits })
+    }
+    if (feed.length > 0) {
+      worker.post({ type: 'feed', settled: feed })
     }
     return connection
   }
@@ -172,9 +199,27 @@ export function createLedgerClient(spawn: LedgerWorkerFactory): LedgerClient {
         worker.post({ type: 'series', requestId, accountId })
       })
     },
+    cards() {
+      return new Promise((resolve, reject) => {
+        const { worker } = connect()
+        const requestId = register({ kind: 'cards', resolve, reject })
+        worker.post({ type: 'cards', requestId })
+      })
+    },
+    budgets() {
+      return new Promise((resolve, reject) => {
+        const { worker } = connect()
+        const requestId = register({ kind: 'budgets', resolve, reject })
+        worker.post({ type: 'budgets', requestId })
+      })
+    },
     setEdits(categories) {
       edits = categories
       connection?.worker.post({ type: 'edits', categories })
+    },
+    setFeed(settled) {
+      feed = settled
+      connection?.worker.post({ type: 'feed', settled })
     },
     ready() {
       return connect().ready
@@ -224,9 +269,26 @@ export function forwardCategoryEdits(client: LedgerClient): () => void {
   return subscribeEdits(forward)
 }
 
+export function forwardFeed(client: LedgerClient): () => void {
+  let forwarded: ReturnType<typeof getEvents> | null = null
+
+  function forward(): void {
+    const events = getEvents()
+    if (events !== forwarded) {
+      forwarded = events
+      client.setFeed(settlements(events))
+    }
+  }
+
+  forward()
+  return subscribeEvents(forward)
+}
+
 const stopForwarding = forwardCategoryEdits(ledgerClient)
+const stopForwardingFeed = forwardFeed(ledgerClient)
 
 import.meta.hot?.dispose(() => {
   stopForwarding()
+  stopForwardingFeed()
   ledgerClient.terminate()
 })

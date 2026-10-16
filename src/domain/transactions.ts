@@ -354,13 +354,18 @@ function organicReference(category: CategoryId, bookedAt: number, random: Random
   }
 }
 
-function organic(id: number, random: RandomSource): Transaction {
+function organicTiming(random: RandomSource): Pick<Transaction, 'bookedAt' | 'status'> {
   const month = pick(MONTHS, MONTH_SUMS, random())
   const bookedAt = monthStart(month) + Math.floor(random() * monthSpan(month))
   const statusRoll = random()
   const status: TransactionStatus = statusRoll >= 1 - STATUS_DECLINED
     ? 'declined'
     : bookedAt > TODAY - PENDING_WINDOW_MS && statusRoll < PENDING_SHARE_IN_WINDOW ? 'pending' : 'booked'
+  return { bookedAt, status }
+}
+
+function organic(id: number, random: RandomSource): Transaction {
+  const { bookedAt, status } = organicTiming(random)
   const accountId = pick(ACCOUNT_WEIGHTS, ACCOUNT_SUMS, random()).accountId
   const sums = CATEGORY_SUMS[accountId]
   const category = status === 'declined'
@@ -408,6 +413,14 @@ export function transaction(id: number): Transaction {
   }
   const random = worldRandom(id)
   return id < RECURRING_COUNT ? recurring(id, random) : organic(id, random)
+}
+
+export function transactionStatus(id: number): TransactionStatus {
+  if (!Number.isInteger(id) || id < 0 || id >= TRANSACTION_COUNT) {
+    throw new RangeError(`Transaction index out of range: ${String(id)}`)
+  }
+  const random = worldRandom(id)
+  return id < RECURRING_COUNT ? recurring(id, random).status : organicTiming(random).status
 }
 
 export function accountAmount(entry: Transaction): number {

@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 
 import { expect, test } from './fixtures'
 
-const announcer = (page: Page) => page.locator('p[role="status"]')
+const announcer = (page: Page) => page.locator('p[role="status"]:not(main *)')
 
 const routes = [
   { path: '/', heading: 'Overview' },

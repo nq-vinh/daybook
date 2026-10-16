@@ -31,7 +31,7 @@ export default defineConfig({
       fullyParallel: false,
       workers: 1,
       dependencies: ['chromium'],
-      use: desktop,
+      use: process.platform === 'darwin' ? { ...desktop, launchOptions: { chromiumSandbox: true } } : desktop,
     },
   ],
   webServer: {

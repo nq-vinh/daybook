@@ -1,0 +1,89 @@
+.card {
+  display: grid;
+  gap: var(--space-3);
+  max-inline-size: 36rem;
+  margin-block-start: var(--space-8);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  border: var(--border-raised);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-raised);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.header h2 {
+  margin: 0;
+}
+
+.pressed {
+  text-decoration: underline var(--rule-width-strong) var(--color-accent);
+  text-underline-offset: var(--space-1);
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-2);
+  margin-inline: calc(-1 * var(--space-2));
+  border-block-end: var(--rule-width) solid var(--color-border);
+}
+
+.item:where([data-arrived]) {
+  animation: arrival var(--duration-base) ease-out;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.amount {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.time {
+  grid-column: 1 / -1;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.more {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+@keyframes arrival {
+  from {
+    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  }
+
+  to {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item:where([data-arrived]) {
+    animation: none;
+  }
+}

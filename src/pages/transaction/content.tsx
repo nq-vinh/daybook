@@ -6,6 +6,7 @@ import { transaction, type TransactionStatus } from '../../domain/transactions'
 import { type Account, accountCurrency, type AccountId, ACCOUNTS, CARDS, CATEGORIES } from '../../domain/world'
 import { Link } from '../../router/link'
 import { setCategory, setNote, useCategoryEdit, useEdits } from '../../state/edits'
+import { type SettledStatus, useFeedRow } from '../../state/feed'
 import { ledgerHref } from '../../state/ledger-search'
 import { Avatar } from '../../ui/Avatar/Avatar'
 import { Badge } from '../../ui/Badge/Badge'
@@ -15,7 +16,7 @@ import { Skeleton } from '../../ui/Skeleton/Skeleton'
 import { Table, type TableColumn } from '../../ui/Table/Table'
 import { TextField } from '../../ui/TextField/TextField'
 import { ledgerClient } from '../../worker/client'
-import { Amount, CategoryLabel, counterpartyName, Status, transactionHref } from '../transactions/cells'
+import { Amount, CategoryLabel, counterpartyName, feedRows, Status, transactionHref } from '../transactions/cells'
 import styles from '../transaction.module.css'
 
 const HISTORY_LIMIT = 12
@@ -26,16 +27,16 @@ const statusBadges: Record<TransactionStatus, { readonly label: string; readonly
   declined: { label: 'Declined', tone: 'negative' },
 }
 
-const historyColumns: TableColumn<number>[] = [
+const historyColumns: TableColumn<number, SettledStatus>[] = [
   {
     key: 'bookedAt',
     header: 'Date',
     cell: (id) => <Link to={transactionHref(id)}>{formatDate(transaction(id).bookedAt)}</Link>,
   },
   { key: 'category', header: 'Category', cell: (id) => <CategoryLabel id={id} /> },
-  { key: 'debit', header: 'Debit', cell: (id) => <Amount id={id} side="debit" />, numeric: true },
-  { key: 'credit', header: 'Credit', cell: (id) => <Amount id={id} side="credit" />, numeric: true },
-  { key: 'status', header: 'Status', cell: (id) => <Status id={id} /> },
+  { key: 'debit', header: 'Debit', cell: (id, settled) => <Amount id={id} side="debit" settled={settled} />, numeric: true },
+  { key: 'credit', header: 'Credit', cell: (id, settled) => <Amount id={id} side="credit" settled={settled} />, numeric: true },
+  { key: 'status', header: 'Status', cell: (id, settled) => <Status id={id} settled={settled} /> },
 ]
 
 function accountOf(accountId: AccountId): Account {
@@ -144,12 +145,14 @@ function CounterpartyHistory({ id, name }: { readonly id: number; readonly name:
       columns={historyColumns}
       rows={ids}
       getRowKey={identity}
+      rowState={feedRows}
     />
   )
 }
 
 export function TransactionContent({ id }: { readonly id: number }) {
   const entry = transaction(id)
+  const settled = useFeedRow(id)
   const [backHref] = useState(ledgerHref)
   const detailsId = useId()
   const attachmentsId = useId()
@@ -161,7 +164,7 @@ export function TransactionContent({ id }: { readonly id: number }) {
   const magnitude = Math.abs(entry.amount)
   const settlement = accountCurrency(entry.accountId)
   const vatAmount = roundHalfAwayFromZero((magnitude * entry.vatRate) / (100 + entry.vatRate))
-  const status = statusBadges[entry.status]
+  const status = statusBadges[settled ?? entry.status]
 
   return (
     <>

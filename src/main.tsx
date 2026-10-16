@@ -23,3 +23,7 @@ createRoot(container).render(
     </RouterProvider>
   </StrictMode>,
 )
+
+void import('./state/feed').then(({ startFeed }) => {
+  startFeed()
+})

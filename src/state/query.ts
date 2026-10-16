@@ -3,6 +3,7 @@ import { startTransition, useDeferredValue, useEffect, useId, useState, useSyncE
 import { type LedgerClient, ledgerClient } from '../worker/client'
 import type { LedgerTotals } from '../worker/protocol'
 import { type Edits, getEdits, subscribeEdits } from './edits'
+import { getEvents, subscribeEvents } from './feed'
 import { type FilterState, parseFilter, serializeFilter } from './url'
 
 export interface LedgerQuery {
@@ -44,6 +45,7 @@ export function useLedgerQuery(filter: FilterState, client: LedgerClient = ledge
   const search = serializeFilter(filter)
   const deferredSearch = useDeferredValue(search)
   const categoryEdits = useSyncExternalStore(subscribeEdits, getCategoryEdits)
+  const feedEvents = useSyncExternalStore(subscribeEvents, getEvents)
   const channel = useId()
   const [landed, setLanded] = useState<LandedResult | null>(null)
   const [failure, setFailure] = useState<Error | null>(null)
@@ -75,7 +77,7 @@ export function useLedgerQuery(filter: FilterState, client: LedgerClient = ledge
     return () => {
       current = false
     }
-  }, [categoryEdits, channel, client, deferredSearch])
+  }, [categoryEdits, channel, client, deferredSearch, feedEvents])
 
   if (failure !== null) {
     throw failure

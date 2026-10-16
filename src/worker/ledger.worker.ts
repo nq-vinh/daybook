@@ -1,4 +1,13 @@
-import { applyCategoryEdits, buildLedgerIndex, counterpartyHistory, ledgerSeries, queryLedger } from './index'
+import {
+  applyCategoryEdits,
+  applyFeedSettlements,
+  budgetSpend,
+  buildLedgerIndex,
+  cardSpend,
+  counterpartyHistory,
+  ledgerSeries,
+  queryLedger,
+} from './index'
 import { assertNever, type LedgerRequest, type LedgerResponse } from './protocol'
 
 const index = buildLedgerIndex()
@@ -24,6 +33,15 @@ function handle(request: LedgerRequest): void {
       return
     case 'edits':
       applyCategoryEdits(index, request.categories)
+      return
+    case 'feed':
+      applyFeedSettlements(index, request.settled)
+      return
+    case 'cards':
+      respond({ type: 'cards', requestId: request.requestId, cards: cardSpend(index) })
+      return
+    case 'budgets':
+      respond({ type: 'budgets', requestId: request.requestId, budgets: budgetSpend(index) })
       return
     default:
       assertNever(request)

@@ -39,10 +39,15 @@ export interface TableSort {
   readonly direction: SortDirection
 }
 
-export interface TableColumn<Row> {
+export interface TableRowState<Key extends TableKey, State extends string = string> {
+  readonly subscribe: (key: Key, listener: () => void) => () => void
+  readonly get: (key: Key) => State | undefined
+}
+
+export interface TableColumn<Row, State extends string = string> {
   readonly key: string
   readonly header: string
-  readonly cell: (row: Row) => ReactNode
+  readonly cell: (row: Row, state: State | undefined) => ReactNode
   readonly align?: 'start' | 'end' | undefined
   readonly numeric?: boolean | undefined
   readonly sortable?: boolean | undefined
@@ -50,13 +55,14 @@ export interface TableColumn<Row> {
   readonly truncate?: boolean | undefined
 }
 
-export interface TableProps<Row, Key extends TableKey = string> {
+export interface TableProps<Row, Key extends TableKey = string, State extends string = string> {
   readonly caption: string
   readonly hideCaption?: boolean | undefined
-  readonly columns: readonly TableColumn<Row>[]
+  readonly columns: readonly TableColumn<Row, State>[]
   readonly rows: ArrayLike<Row>
   readonly getRowKey: (row: Row) => Key
   readonly getRowLabel?: ((row: Row) => string) | undefined
+  readonly rowState?: TableRowState<Key, State> | undefined
   readonly sort?: TableSort | null | undefined
   readonly onSortChange?: ((sort: TableSort) => void) | undefined
   readonly selectable?: boolean | undefined
@@ -108,13 +114,14 @@ function clampedIndex(move: RovingMove, current: number, count: number, step: nu
 
 const emptySelection: ReadonlySet<never> = new Set()
 
-export function Table<Row, Key extends TableKey = string>({
+export function Table<Row, Key extends TableKey = string, State extends string = string>({
   caption,
   hideCaption = false,
   columns,
   rows,
   getRowKey,
   getRowLabel,
+  rowState,
   sort,
   onSortChange,
   selectable = false,
@@ -125,7 +132,7 @@ export function Table<Row, Key extends TableKey = string>({
   virtualised = false,
   rowFocus = virtualised,
   className,
-}: TableProps<Row, Key>) {
+}: TableProps<Row, Key, State>) {
   const elements = useRef<Map<string, HTMLTableRowElement> | null>(null)
   const handlers = useRef<RowHandlers<Key> | null>(null)
   const tableRef = useRef<HTMLTableElement>(null)
@@ -529,6 +536,7 @@ export function Table<Row, Key extends TableKey = string>({
             virtualised={virtualised}
             columns={columns}
             getRowLabel={getRowLabel}
+            rowState={rowState}
             dispatch={dispatch}
           />
         ))}

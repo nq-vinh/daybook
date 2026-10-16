@@ -31,7 +31,10 @@ export function fakeClient({ supersede = true }: { readonly supersede?: boolean 
     },
     history: () => Promise.resolve(new Int32Array(0)),
     series: () => Promise.reject(new Error('Series is not used here.')),
+    cards: () => Promise.reject(new Error('Cards are not used here.')),
+    budgets: () => Promise.reject(new Error('Budgets are not used here.')),
     setEdits: () => undefined,
+    setFeed: () => undefined,
     ready: () => Promise.resolve(),
     terminate: () => undefined,
   }

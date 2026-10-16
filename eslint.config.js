@@ -3,7 +3,7 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 import reactHooks from 'eslint-plugin-react-hooks'
 import tseslint from 'typescript-eslint'
 
-const nondeterministicSourcesAllowedIn = ['src/state/feed.ts', 'src/state/hud.ts']
+const nondeterministicSourcesAllowedIn = ['src/state/feed.ts', 'src/state/hud.ts', 'tests/**']
 
 const memoisationSyntax = {
   selector: "MemberExpression[object.name='React'][property.name=/^(memo|useMemo|useCallback)$/]",

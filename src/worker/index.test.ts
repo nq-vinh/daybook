@@ -3,12 +3,15 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { convert, RATES_PER_100_EUR } from '../domain/fx'
-import { monthlySeriesByAccount, type Transaction, transaction, TRANSACTION_COUNT } from '../domain/transactions'
-import { accountCurrency, CATEGORIES, COUNTERPARTIES, DAY_MS } from '../domain/world'
+import { COMPLETE_MONTHS, monthlySeriesByAccount, type Transaction, transaction, TRANSACTION_COUNT } from '../domain/transactions'
+import { accountCurrency, CARDS, CATEGORIES, COUNTERPARTIES, DAY_MS, monthStart } from '../domain/world'
 import { DEFAULT_FILTER, type FilterState, isoDayStart } from '../state/url'
 import {
   applyCategoryEdits,
+  applyFeedSettlements,
+  budgetSpend,
   buildLedgerIndex,
+  cardSpend,
   counterpartyHistory,
   type LedgerIndex,
   ledgerSeries,
@@ -217,6 +220,96 @@ describe('queryLedger', () => {
 
     applyCategoryEdits(index, [])
     expect([...queryLedger(index, travel).ids]).toEqual([...before])
+  })
+})
+
+describe('applyFeedSettlements', () => {
+  it('settles pending rows for filters and totals and restores the seeded status when cleared', () => {
+    const pending = rows.filter((entry) => entry.status === 'pending').slice(0, 2)
+    const [first, second] = pending
+    if (first === undefined || second === undefined) {
+      throw new Error('Expected two pending transactions.')
+    }
+    const pendingFilter: FilterState = { ...DEFAULT_FILTER, status: ['pending'] }
+    const declinedFilter: FilterState = { ...DEFAULT_FILTER, status: ['declined'] }
+    const before = queryLedger(index, pendingFilter)
+    const all = queryLedger(index, DEFAULT_FILTER).totals
+
+    try {
+      applyFeedSettlements(index, [[first.id, 'booked'], [second.id, 'declined']])
+      const after = queryLedger(index, pendingFilter)
+      expect(after.ids).toHaveLength(before.ids.length - 2)
+      expect([...queryLedger(index, declinedFilter).ids]).toContain(second.id)
+      const settledTotals = queryLedger(index, DEFAULT_FILTER).totals
+      const secondInEur = convert(second.amount, second.currency, 'EUR')
+      expect(settledTotals.net).toBe(all.net - secondInEur)
+      expect(index.status[first.id]).not.toBe(index.originalStatus[first.id])
+    } finally {
+      applyFeedSettlements(index, [])
+    }
+    expect([...queryLedger(index, pendingFilter).ids]).toEqual([...before.ids])
+    expect(queryLedger(index, DEFAULT_FILTER).totals).toEqual(all)
+  })
+})
+
+function spend(entry: Transaction): number {
+  return entry.status === 'declined' || entry.amount >= 0 ? 0 : -entry.amount
+}
+
+describe('cardSpend', () => {
+  it('sums booked and pending card debits of September 2026 in the card account currency', () => {
+    const start = monthStart(COMPLETE_MONTHS)
+    const expected = CARDS.map((card) => rows
+      .filter((entry) => entry.cardId === card.id && entry.bookedAt >= start)
+      .reduce((sum, entry) => sum + convert(spend(entry), entry.currency, accountCurrency(card.accountId)), 0))
+
+    const result = cardSpend(index)
+    expect(result.map((entry) => entry.cardId)).toEqual(CARDS.map((card) => card.id))
+    expect(result.map((entry) => entry.monthToDate)).toEqual(expected)
+    expect(result.map((entry) => entry.currency)).toEqual(CARDS.map((card) => accountCurrency(card.accountId)))
+    expect(expected.some((total) => total > 0)).toBe(true)
+  })
+
+  it('drops a pending card debit once the feed declines it', () => {
+    const target = rows.find((entry) => entry.status === 'pending' && entry.cardId !== undefined && entry.bookedAt >= monthStart(COMPLETE_MONTHS))
+    if (target?.cardId === undefined) {
+      throw new Error('Expected a pending card debit this month.')
+    }
+    const cardId = target.cardId
+    const before = cardSpend(index).find((entry) => entry.cardId === cardId)?.monthToDate ?? 0
+
+    let after = before
+    try {
+      applyFeedSettlements(index, [[target.id, 'declined']])
+      after = cardSpend(index).find((entry) => entry.cardId === cardId)?.monthToDate ?? 0
+    } finally {
+      applyFeedSettlements(index, [])
+    }
+
+    expect(before - after).toBe(-convert(target.amount, target.currency, accountCurrency(target.accountId)))
+  })
+})
+
+describe('budgetSpend', () => {
+  it('returns the month-to-date spend in EUR and the share of the last three complete months per expense category', () => {
+    const monthToDateStart = monthStart(COMPLETE_MONTHS)
+    const shareStart = monthStart(COMPLETE_MONTHS - 3)
+    const expenseIds = CATEGORIES.filter((category) => category.kind === 'expense').map((category) => category.id)
+    const inEur = (entry: Transaction): number => convert(spend(entry), entry.currency, 'EUR')
+    const recent = expenseIds.map((categoryId) => rows
+      .filter((entry) => entry.category === categoryId && entry.bookedAt >= shareStart && entry.bookedAt < monthToDateStart)
+      .reduce((sum, entry) => sum + inEur(entry), 0))
+    const recentTotal = recent.reduce((sum, value) => sum + value, 0)
+
+    const result = budgetSpend(index)
+    expect(result.map((entry) => entry.categoryId)).toEqual(expenseIds)
+    expect(result.map((entry) => entry.monthToDate)).toEqual(expenseIds.map((categoryId) => rows
+      .filter((entry) => entry.category === categoryId && entry.bookedAt >= monthToDateStart)
+      .reduce((sum, entry) => sum + inEur(entry), 0)))
+    result.forEach((entry, position) => {
+      expect(entry.share).toBeCloseTo((recent[position] ?? 0) / recentTotal, 12)
+    })
+    expect(result.reduce((sum, entry) => sum + entry.share, 0)).toBeCloseTo(1, 12)
   })
 })
 

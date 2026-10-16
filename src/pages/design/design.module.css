@@ -120,7 +120,7 @@
 .raised {
   inline-size: var(--table-column-lg);
   block-size: var(--space-16);
-  border: 0;
+  border: var(--border-raised);
   border-radius: var(--radius-md);
   background: var(--color-surface-raised);
   box-shadow: var(--swatch-shadow);

@@ -27,7 +27,7 @@ function clickDefaultPrevented(element: HTMLElement, init: MouseEventInit = {}):
 }
 
 function announcer(): HTMLElement {
-  const region = screen.getAllByRole('status').find((element) => !element.hasAttribute('aria-label'))
+  const region = screen.getAllByRole('status').find((element) => !element.hasAttribute('aria-label') && element.closest('main') === null)
 
   if (region === undefined) {
     throw new Error('The route announcer is not rendered.')

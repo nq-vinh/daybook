@@ -11,6 +11,7 @@ import {
   type Transaction,
   transaction,
   TRANSACTION_COUNT,
+  transactionStatus,
 } from './transactions'
 import { accountCurrency, type AccountId, ACCOUNTS, CARDS, CATEGORIES, monthIndexOf, TODAY, WINDOW_MONTHS, WINDOW_START } from './world'
 
@@ -93,6 +94,11 @@ describe('transactions', () => {
         "vatRate": 19,
       }
     `)
+  })
+
+  it('reads the status without generating the rest of the transaction', () => {
+    expect(world.every((entry) => transactionStatus(entry.id) === entry.status)).toBe(true)
+    expect(() => transactionStatus(TRANSACTION_COUNT)).toThrow(RangeError)
   })
 
   it('rejects indices outside the world', () => {

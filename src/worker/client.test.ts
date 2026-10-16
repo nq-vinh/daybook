@@ -3,8 +3,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { transaction } from '../domain/transactions'
 import { setCategory } from '../state/edits'
 import { DEFAULT_FILTER } from '../state/url'
-import { createLedgerClient, forwardCategoryEdits, type LedgerClient, type LedgerWorkerHandlers } from './client'
-import type { CategoryEdit, LedgerRequest, LedgerSeries, LedgerTotals } from './protocol'
+import { deliverForTest, FEED_EVENTS, stopFeed } from '../state/feed'
+import { createLedgerClient, forwardCategoryEdits, forwardFeed, type LedgerClient, type LedgerWorkerHandlers } from './client'
+import type { BudgetSpend, CardSpend, CategoryEdit, LedgerRequest, LedgerSeries, LedgerTotals } from './protocol'
 
 interface FakeWorker {
   readonly posted: LedgerRequest[]
@@ -118,6 +119,36 @@ describe('ledger client', () => {
     expect(workers[1]?.posted[1]).toMatchObject({ type: 'query' })
   })
 
+  it('resolves cards and budgets with their own responses', async () => {
+    const { client, current, requestIds } = harness()
+    const cardsRequest = client.cards()
+    const budgetsRequest = client.budgets()
+    const cards: CardSpend[] = [{ cardId: 'card-01', monthToDate: 1_234, currency: 'EUR' }]
+    const budgets: BudgetSpend[] = [{ categoryId: 'travel', monthToDate: 5_678, share: 0.25 }]
+
+    current().message({ type: 'budgets', requestId: requestIds('budgets')[0] ?? -1, budgets })
+    current().message({ type: 'cards', requestId: requestIds('cards')[0] ?? -1, cards })
+
+    await expect(cardsRequest).resolves.toBe(cards)
+    await expect(budgetsRequest).resolves.toBe(budgets)
+  })
+
+  it('posts feed settlements once connected and re-sends them to a new worker', () => {
+    const { client, workers } = harness()
+    client.setFeed([[7, 'booked']])
+    expect(workers).toHaveLength(0)
+
+    void client.ready()
+    expect(workers[0]?.posted).toEqual([{ type: 'feed', settled: [[7, 'booked']] }])
+
+    client.setFeed([[8, 'declined'], [7, 'booked']])
+    expect(workers[0]?.posted.at(-1)).toEqual({ type: 'feed', settled: [[8, 'declined'], [7, 'booked']] })
+
+    client.terminate()
+    void client.ready()
+    expect(workers[1]?.posted).toEqual([{ type: 'feed', settled: [[8, 'declined'], [7, 'booked']] }])
+  })
+
   it('rejects every pending request and the ready promise when the worker fails', async () => {
     const { client, current } = harness()
     const ready = client.ready()
@@ -181,9 +212,12 @@ describe('forwardCategoryEdits', () => {
       query: () => Promise.resolve(null),
       history: () => Promise.resolve(new Int32Array(0)),
       series: () => Promise.reject(new Error('Series is not used here.')),
+      cards: () => Promise.resolve([]),
+      budgets: () => Promise.resolve([]),
       setEdits: (categories) => {
         sent.push(categories)
       },
+      setFeed: () => undefined,
       ready: () => Promise.resolve(),
       terminate: () => undefined,
     }
@@ -197,5 +231,41 @@ describe('forwardCategoryEdits', () => {
     stop()
     setCategory(edited, null)
     expect(sent).toHaveLength(2)
+  })
+})
+
+describe('forwardFeed', () => {
+  afterEach(() => {
+    stopFeed()
+  })
+
+  it('sends every delivered settlement, newest first, until stopped', () => {
+    const sent: unknown[] = []
+    const recorder: LedgerClient = {
+      query: () => Promise.resolve(null),
+      history: () => Promise.resolve(new Int32Array(0)),
+      series: () => Promise.reject(new Error('Series is not used here.')),
+      cards: () => Promise.resolve([]),
+      budgets: () => Promise.resolve([]),
+      setEdits: () => undefined,
+      setFeed: (settled) => {
+        sent.push(settled)
+      },
+      ready: () => Promise.resolve(),
+      terminate: () => undefined,
+    }
+    const [first, second] = FEED_EVENTS
+    if (first === undefined || second === undefined) {
+      throw new Error('Expected two feed events.')
+    }
+
+    const stop = forwardFeed(recorder)
+    deliverForTest(first)
+    deliverForTest(second)
+    expect(sent).toEqual([[], [[first.id, first.status]], [[second.id, second.status], [first.id, first.status]]])
+
+    stop()
+    stopFeed()
+    expect(sent).toHaveLength(3)
   })
 })

@@ -1,11 +1,10 @@
 import { useState } from 'react'
 
 import { CATEGORIES, type CategoryId } from '../../domain/world'
-import { setCategories } from '../../state/edits'
-import { toast } from '../../state/toast'
 import { Button } from '../../ui/Button/Button'
 import { Select } from '../../ui/Select/Select'
 import styles from '../transactions.module.css'
+import { categoriseWithUndo } from './categorise'
 import { CATEGORY_GROUPS, formatCount, SELECTION_LIMIT } from './filters'
 
 export interface SelectionBarProps {
@@ -29,8 +28,7 @@ export function SelectionBar({ selection, limited, onDone }: SelectionBarProps) 
     }
     const label = CATEGORIES.find((candidate) => candidate.id === category)?.label ?? category
     onDone()
-    setCategories(selection, category)
-    toast({ title: `Categorised ${count} ${noun} as ${label}` })
+    categoriseWithUndo(selection, category, `Categorised ${count} ${noun} as ${label}`)
   }
 
   return (

@@ -1,6 +1,7 @@
 import type { AccountId, CounterpartyId } from '../domain/world'
-import { categoryEditEntries, type Edits, getEdits, subscribeEdits } from '../state/edits'
+import { categoryEditEntries, type Edits } from '../state/edits'
 import { getEvents, settlements, subscribeEvents } from '../state/feed'
+import { getEffectiveCategories, subscribeEffectiveCategories } from '../state/optimistic'
 import type { FilterState } from '../state/url'
 import {
   assertNever,
@@ -258,7 +259,7 @@ export function forwardCategoryEdits(client: LedgerClient): () => void {
   let forwarded: Edits['categories'] | null = null
 
   function forward(): void {
-    const { categories } = getEdits()
+    const categories = getEffectiveCategories()
     if (categories !== forwarded) {
       forwarded = categories
       client.setEdits(categoryEditEntries(categories))
@@ -266,7 +267,7 @@ export function forwardCategoryEdits(client: LedgerClient): () => void {
   }
 
   forward()
-  return subscribeEdits(forward)
+  return subscribeEffectiveCategories(forward)
 }
 
 export function forwardFeed(client: LedgerClient): () => void {

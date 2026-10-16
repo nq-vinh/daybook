@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fakeClient, type PendingQuery } from '../../tests/unit/fake-ledger-client'
 import { transaction } from '../domain/transactions'
 import type { LedgerResult } from '../worker/protocol'
-import { setCategory, setNote } from './edits'
+import { setCategoryEntries, setNote } from './edits'
 import { deliverForTest, FEED_EVENTS, stopFeed } from './feed'
 import { useLedgerQuery } from './query'
 import { DEFAULT_FILTER } from './url'
@@ -160,13 +160,13 @@ describe('useLedgerQuery', () => {
     const target = transaction(id).category === 'travel' ? 'meals' : 'travel'
 
     act(() => {
-      setCategory(id, target)
+      setCategoryEntries([[id, target]])
     })
     expect(calls).toHaveLength(2)
     expect(calls[1]?.filter.cat).toEqual(['travel'])
 
     act(() => {
-      setCategory(id, null)
+      setCategoryEntries([[id, null]])
     })
     expect(calls).toHaveLength(3)
 

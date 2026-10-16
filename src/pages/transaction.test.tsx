@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -12,6 +12,8 @@ import { navigate } from '../router/history'
 import { RouterProvider } from '../router/router'
 import { getEdits, setNote } from '../state/edits'
 import { LEDGER_SEARCH_KEY } from '../state/ledger-search'
+import { cancelAllForTest } from '../state/optimistic'
+import { dismissAllToasts } from '../state/toast'
 import { notFound, routes } from './routes'
 import { parseTransactionId } from './transaction'
 
@@ -62,6 +64,8 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  cancelAllForTest()
+  dismissAllToasts()
   vi.restoreAllMocks()
 })
 
@@ -95,15 +99,22 @@ describe('TransactionPage', () => {
     expect(screen.getByRole('link', { name: 'Back to ledger' })).toHaveAttribute('href', '/transactions')
   })
 
-  it('writes the category edit directly and saves the note on blur only when it changed', async () => {
+  it('shows the category change at once, commits it after the latency and saves the note on blur only when it changed', async () => {
     const user = await renderDetail()
     const target = CATEGORIES.find((category) => category.id !== transaction(ID).category)
     if (target === undefined) {
       throw new Error('Expected another category.')
     }
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Category' }), target.label)
-    expect(getEdits().categories[ID]).toBe(target.id)
+    const select = screen.getByRole('combobox', { name: 'Category' })
+    await user.selectOptions(select, target.label)
+    expect(select).toHaveValue(target.id)
+    expect(getEdits().categories[ID]).toBeUndefined()
+    expect(screen.getByText(`Categorised as ${target.label}`)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(getEdits().categories[ID]).toBe(target.id)
+    })
+    expect(select).toHaveValue(target.id)
 
     const notes = screen.getByRole('textbox', { name: 'Notes' })
     await user.type(notes, 'Check the receipt')

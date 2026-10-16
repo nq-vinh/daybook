@@ -10,8 +10,10 @@ import { accountAmount, TRANSACTION_COUNT, transaction } from '../domain/transac
 import { ACCOUNTS } from '../domain/world'
 import { navigate } from '../router/history'
 import { RouterProvider } from '../router/router'
-import { getEdits, setCategories } from '../state/edits'
+import { getEdits, setCategoryEntries } from '../state/edits'
 import { deliverForTest, FEED_EVENTS, type FeedEvent, stopFeed } from '../state/feed'
+import { cancelAllForTest, categoriesAction, commitLater, flushForTest } from '../state/optimistic'
+import { dismissAllToasts } from '../state/toast'
 import type { TableRowProps } from '../ui/Table/TableRow'
 import type { LedgerResult } from '../worker/protocol'
 import { notFound, routes } from './routes'
@@ -145,6 +147,12 @@ beforeEach(() => {
   window.localStorage.clear()
 })
 
+afterEach(() => {
+  cancelAllForTest()
+  dismissAllToasts()
+  setCategoryEntries(Object.keys(getEdits().categories).map((id) => [Number(id), null] as const))
+})
+
 describe('TransactionsPage', () => {
   it('renders the virtualised ledger with the result count, indices and totals', async () => {
     await renderLedger('', result(5_000))
@@ -202,7 +210,7 @@ describe('TransactionsPage', () => {
     const posted = calls.length
 
     act(() => {
-      setCategories([TRANSACTION_COUNT - 1], 'travel')
+      setCategoryEntries([[TRANSACTION_COUNT - 1, 'travel']])
     })
     await waitFor(() => {
       expect(calls).toHaveLength(posted + 1)
@@ -404,7 +412,7 @@ describe('TransactionsPage', () => {
     expect(window.location.search).toBe('')
   })
 
-  it('categorises the selected rows in one edit, announces it and returns focus to the results', async () => {
+  it('categorises the selected rows at once, commits after the latency, returns focus to the results and undoes from the toast', async () => {
     const user = await renderLedger()
     const posted = calls.length
     const [first, second] = bodyRows()
@@ -419,8 +427,9 @@ describe('TransactionsPage', () => {
     await user.selectOptions(within(bar).getByRole('combobox', { name: 'Category' }), 'marketing')
     await user.click(within(bar).getByRole('button', { name: 'Categorise 2 transactions' }))
 
-    expect(getEdits().categories[0]).toBe('marketing')
-    expect(getEdits().categories[1]).toBe('marketing')
+    expect(first).toHaveTextContent('Marketing')
+    expect(second).toHaveTextContent('Marketing')
+    expect(getEdits().categories[0]).toBeUndefined()
     expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull()
     expect(screen.getByText('Transactions', { selector: 'dt' }).closest('dl')?.parentElement).toHaveClass(styles.resultsSummary ?? '')
     expect(screen.getByRole('heading', { name: 'Results' })).toHaveFocus()
@@ -428,7 +437,39 @@ describe('TransactionsPage', () => {
     await waitFor(() => {
       expect(calls.length).toBeGreaterThan(posted)
     })
-    setCategories([0, 1], null)
+    await waitFor(() => {
+      expect(getEdits().categories).toEqual({ 0: 'marketing', 1: 'marketing' })
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(getEdits().categories).toEqual({})
+    expect(first).not.toHaveTextContent('Marketing')
+    expect(await screen.findByText('Restored the previous category for 2 transactions')).toBeInTheDocument()
+  })
+
+  it('commits only the categorised rows when the action starts and nothing when the commit lands', async () => {
+    await renderLedger('', result(40))
+    resetProfile()
+
+    act(() => {
+      commitLater(categoriesAction([0, 1], 'marketing'))
+    })
+    expect(profile.rows).toBe(2)
+    await waitFor(() => {
+      expect(calls.at(-1)?.settled).toBe(false)
+    })
+    await respond(latestCall(), result(40))
+    const posted = calls.length
+    resetProfile()
+
+    act(() => {
+      flushForTest()
+    })
+
+    expect(getEdits().categories).toEqual({ 0: 'marketing', 1: 'marketing' })
+    expect(profile.rows).toBe(0)
+    expect(profile.commits).toEqual({ sidebar: 0, totals: 0, ledger: 0 })
+    expect(calls).toHaveLength(posted)
   })
 
   it('caps select all at 1,000 rows with a notice and an indeterminate header checkbox', async () => {

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { transaction } from '../domain/transactions'
-import { setCategory } from '../state/edits'
+import { setCategoryEntries } from '../state/edits'
 import { DEFAULT_FILTER } from '../state/url'
 import { deliverForTest, FEED_EVENTS, stopFeed } from '../state/feed'
 import { createLedgerClient, forwardCategoryEdits, forwardFeed, type LedgerClient, type LedgerWorkerHandlers } from './client'
@@ -203,7 +203,7 @@ describe('forwardCategoryEdits', () => {
   const target = transaction(edited).category === 'travel' ? 'meals' : 'travel'
 
   afterEach(() => {
-    setCategory(edited, null)
+    setCategoryEntries([[edited, null]])
   })
 
   it('sends the current category edits and every later change until stopped', () => {
@@ -225,11 +225,11 @@ describe('forwardCategoryEdits', () => {
     const stop = forwardCategoryEdits(recorder)
     expect(sent).toEqual([[]])
 
-    setCategory(edited, target)
+    setCategoryEntries([[edited, target]])
     expect(sent).toEqual([[], [[edited, target]]])
 
     stop()
-    setCategory(edited, null)
+    setCategoryEntries([[edited, null]])
     expect(sent).toHaveLength(2)
   })
 })

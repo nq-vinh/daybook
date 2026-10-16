@@ -2,8 +2,9 @@ import { startTransition, useDeferredValue, useEffect, useId, useState, useSyncE
 
 import { type LedgerClient, ledgerClient } from '../worker/client'
 import type { LedgerTotals } from '../worker/protocol'
-import { type Edits, getEdits, subscribeEdits } from './edits'
+import type { Edits } from './edits'
 import { getEvents, subscribeEvents } from './feed'
+import { getEffectiveCategories, subscribeEffectiveCategories } from './optimistic'
 import { type FilterState, parseFilter, serializeFilter } from './url'
 
 export interface LedgerQuery {
@@ -37,14 +38,10 @@ function sameIds(previous: Int32Array, next: Int32Array): boolean {
   return true
 }
 
-function getCategoryEdits(): Edits['categories'] {
-  return getEdits().categories
-}
-
 export function useLedgerQuery(filter: FilterState, client: LedgerClient = ledgerClient): LedgerQuery {
   const search = serializeFilter(filter)
   const deferredSearch = useDeferredValue(search)
-  const categoryEdits = useSyncExternalStore(subscribeEdits, getCategoryEdits)
+  const categoryEdits = useSyncExternalStore(subscribeEffectiveCategories, getEffectiveCategories)
   const feedEvents = useSyncExternalStore(subscribeEvents, getEvents)
   const channel = useId()
   const [landed, setLanded] = useState<LandedResult | null>(null)

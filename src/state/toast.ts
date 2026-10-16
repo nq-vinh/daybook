@@ -14,6 +14,7 @@ export interface ToastInput {
   readonly description?: string | undefined
   readonly action?: ToastAction | undefined
   readonly duration?: number | undefined
+  readonly onDismiss?: (() => void) | undefined
 }
 
 export interface Toast {
@@ -25,6 +26,7 @@ export interface Toast {
 
 const listeners = new Set<() => void>()
 const remaining = new Map<string, number>()
+const dismissed = new Map<string, () => void>()
 
 let toasts: readonly Toast[] = Object.freeze([])
 let nextId = 1
@@ -37,6 +39,14 @@ function publish(next: readonly Toast[]): void {
 
   for (const listener of listeners) {
     listener()
+  }
+}
+
+function notifyDismissed(ids: Iterable<string>): void {
+  for (const id of ids) {
+    const callback = dismissed.get(id)
+    dismissed.delete(id)
+    callback?.()
   }
 }
 
@@ -67,13 +77,17 @@ function tick(): void {
 
   if (expired.size > 0) {
     publish(toasts.filter((candidate) => !expired.has(candidate.id)))
+    notifyDismissed(expired)
   }
 }
 
-export function toast({ title, description, action, duration = DEFAULT_DURATION_MS }: ToastInput): string {
+export function toast({ title, description, action, duration = DEFAULT_DURATION_MS, onDismiss }: ToastInput): string {
   const id = `toast-${String(nextId)}`
   nextId += 1
   remaining.set(id, duration)
+  if (onDismiss !== undefined) {
+    dismissed.set(id, onDismiss)
+  }
   publish([...toasts, Object.freeze({ id, title, description, action })])
   return id
 }
@@ -85,12 +99,15 @@ export function dismiss(id: string): boolean {
 
   remaining.delete(id)
   publish(toasts.filter((candidate) => candidate.id !== id))
+  notifyDismissed([id])
   return true
 }
 
 export function dismissAllToasts(): void {
+  const ids = toasts.map((candidate) => candidate.id)
   remaining.clear()
   publish([])
+  notifyDismissed(ids)
 }
 
 export function setToastTimersPaused(next: boolean): void {

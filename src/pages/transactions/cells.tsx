@@ -3,8 +3,8 @@ import { useSyncExternalStore } from 'react'
 import { formatMoney } from '../../domain/format'
 import { transaction } from '../../domain/transactions'
 import { CATEGORIES, type CategoryId, COUNTERPARTIES, type Currency } from '../../domain/world'
-import { useCategoryEdit } from '../../state/edits'
 import { getRowOverride, type SettledStatus, subscribeRow } from '../../state/feed'
+import { useEffectiveCategory } from '../../state/optimistic'
 import { Badge } from '../../ui/Badge/Badge'
 import { cx } from '../../ui/classes'
 import type { TableRowState } from '../../ui/Table/Table'
@@ -30,8 +30,7 @@ export function categoryLabel(category: CategoryId): string {
 }
 
 export function CategoryLabel({ id }: { readonly id: number }) {
-  const edited = useCategoryEdit(id)
-  return categoryLabel(edited ?? transaction(id).category)
+  return categoryLabel(useEffectiveCategory(id))
 }
 
 export interface FeedCellProps {

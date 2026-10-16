@@ -1,13 +1,14 @@
-import { useEffect, useId, useState } from 'react'
+import { startTransition, useEffect, useId, useOptimistic, useState } from 'react'
 
 import { formatDate, formatMoney, formatPercent, formatRelative, formatSignedMoney } from '../../domain/format'
 import { convert, roundHalfAwayFromZero } from '../../domain/fx'
 import { transaction, type TransactionStatus } from '../../domain/transactions'
 import { type Account, accountCurrency, type AccountId, ACCOUNTS, CARDS, CATEGORIES } from '../../domain/world'
 import { Link } from '../../router/link'
-import { setCategory, setNote, useCategoryEdit, useEdits } from '../../state/edits'
+import { setNote, useEdits } from '../../state/edits'
 import { type SettledStatus, useFeedRow } from '../../state/feed'
 import { ledgerHref } from '../../state/ledger-search'
+import { useEffectiveCategory } from '../../state/optimistic'
 import { Avatar } from '../../ui/Avatar/Avatar'
 import { Badge } from '../../ui/Badge/Badge'
 import { EmptyState } from '../../ui/EmptyState/EmptyState'
@@ -16,6 +17,7 @@ import { Skeleton } from '../../ui/Skeleton/Skeleton'
 import { Table, type TableColumn } from '../../ui/Table/Table'
 import { TextField } from '../../ui/TextField/TextField'
 import { ledgerClient } from '../../worker/client'
+import { categoriseWithUndo } from '../transactions/categorise'
 import { Amount, CategoryLabel, counterpartyName, feedRows, Status, transactionHref } from '../transactions/cells'
 import styles from '../transaction.module.css'
 
@@ -52,7 +54,7 @@ function identity(id: number): number {
 }
 
 function CategoryField({ id }: { readonly id: number }) {
-  const category = useCategoryEdit(id) ?? transaction(id).category
+  const [category, showCategory] = useOptimistic(useEffectiveCategory(id))
 
   return (
     <Select
@@ -62,8 +64,11 @@ function CategoryField({ id }: { readonly id: number }) {
       value={category}
       onChange={(event) => {
         const next = CATEGORIES.find((candidate) => candidate.id === event.currentTarget.value)
-        if (next !== undefined) {
-          setCategory(id, next.id)
+        if (next !== undefined && next.id !== category) {
+          startTransition(async () => {
+            showCategory(next.id)
+            await categoriseWithUndo([id], next.id, `Categorised as ${next.label}`).settled
+          })
         }
       }}
     >

@@ -33,12 +33,12 @@ describe('edits store', () => {
   })
 
   it('persists every kind of edit under a versioned key and publishes a new frozen snapshot', async () => {
-    const { getEdits, setBudget, setCardStatus, setCategory, setNote } = await freshStore()
+    const { getEdits, setBudget, setCardStatus, setCategoryEntries, setNote } = await freshStore()
     const before = getEdits()
     const seeded = transaction(1_000).category
     const other = seeded === 'travel' ? 'meals' : 'travel'
 
-    setCategory(1_000, other)
+    setCategoryEntries([[1_000, other]])
     setNote(1_000, 'Reimbursed by client')
     setBudget('travel', 1_500_000)
     setCardStatus('card-01', 'frozen')
@@ -56,13 +56,13 @@ describe('edits store', () => {
   })
 
   it('removes an edit that is cleared or set back to the seeded value', async () => {
-    const { getEdits, setBudget, setCardStatus, setCategory, setNote } = await freshStore()
+    const { getEdits, setBudget, setCardStatus, setCategoryEntries, setNote } = await freshStore()
     const seeded = transaction(42).category
 
-    setCategory(42, seeded === 'travel' ? 'meals' : 'travel')
-    setCategory(42, seeded)
-    setCategory(43, 'travel')
-    setCategory(43, null)
+    setCategoryEntries([[42, seeded === 'travel' ? 'meals' : 'travel']])
+    setCategoryEntries([[42, seeded]])
+    setCategoryEntries([[43, 'travel']])
+    setCategoryEntries([[43, null]])
     setNote(42, 'note')
     setNote(42, '   ')
     setBudget('rent', 10)
@@ -95,9 +95,9 @@ describe('edits store', () => {
   })
 
   it('rejects out-of-range ids and invalid budget amounts', async () => {
-    const { setBudget, setCategory, setNote } = await freshStore()
+    const { setBudget, setCategoryEntries, setNote } = await freshStore()
 
-    expect(() => { setCategory(100_000, 'travel') }).toThrow(RangeError)
+    expect(() => { setCategoryEntries([[100_000, 'travel']]) }).toThrow(RangeError)
     expect(() => { setNote(-1, 'x') }).toThrow(RangeError)
     expect(() => { setBudget('rent', 12.5) }).toThrow(RangeError)
   })
@@ -130,15 +130,14 @@ describe('edits store', () => {
   })
 
   it('re-renders category selectors and follows storage events from other tabs', async () => {
-    const { setCategory, useCategoryEdit, useEdits } = await freshStore()
-    const category = renderHook(() => useCategoryEdit(7))
+    const { setCategoryEntries, useEdits } = await freshStore()
     const edits = renderHook(() => useEdits())
     const next = transaction(7).category === 'travel' ? 'meals' : 'travel'
 
     act(() => {
-      setCategory(7, next)
+      setCategoryEntries([[7, next]])
     })
-    expect(category.result.current).toBe(next)
+    expect(edits.result.current.categories[7]).toBe(next)
 
     act(() => {
       window.dispatchEvent(new StorageEvent('storage', {
@@ -146,7 +145,7 @@ describe('edits store', () => {
         newValue: JSON.stringify({ version: 1, categories: {}, notes: { 7: 'from another tab' }, budgets: {}, cards: {} }),
       }))
     })
-    expect(category.result.current).toBeNull()
+    expect(edits.result.current.categories[7]).toBeUndefined()
     expect(edits.result.current.notes).toEqual({ 7: 'from another tab' })
   })
 
@@ -157,26 +156,26 @@ describe('edits store', () => {
   })
 })
 
-describe('setCategories', () => {
-  it('applies one category to many ids in a single commit and storage write', async () => {
+describe('setCategoryEntries', () => {
+  it('applies many category entries in a single commit and storage write', async () => {
     const store = await freshStore()
     const listener = vi.fn()
     store.subscribeEdits(listener)
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
     const seeded = transaction(3).category
     const target = seeded === 'travel' ? 'meals' : 'travel'
-    store.setCategory(9, 'rent')
+    store.setCategoryEntries([[9, 'rent']])
 
     setItem.mockClear()
     listener.mockClear()
-    store.setCategories([3, 4, 9], target)
+    store.setCategoryEntries([[3, target], [4, target], [9, target]])
 
     expect(setItem).toHaveBeenCalledTimes(1)
     expect(listener).toHaveBeenCalledTimes(1)
     expect(store.getEdits().categories[3]).toBe(target)
     expect(store.getEdits().categories[9]).toBe(target === transaction(9).category ? undefined : target)
 
-    store.setCategories([3, 4, 9], null)
+    store.setCategoryEntries([[3, null], [4, null], [9, null]])
     expect(store.getEdits().categories).toEqual({})
     setItem.mockRestore()
   })

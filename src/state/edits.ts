@@ -182,19 +182,16 @@ export function subscribeEdits(listener: () => void): () => void {
   }
 }
 
-export function setCategory(id: number, categoryId: CategoryId | null): void {
-  setCategories([id], categoryId)
-}
-
-export function setCategories(ids: Iterable<number>, categoryId: CategoryId | null): void {
-  const targets = new Set(ids)
-  for (const id of targets) {
+export function setCategoryEntries(entries: Iterable<readonly [number, CategoryId | null]>): void {
+  const targets = new Map<number, CategoryId | null>()
+  for (const [id, categoryId] of entries) {
     assertTransactionId(id)
+    targets.set(id, categoryId)
   }
   const kept = Object.entries(getEdits().categories).filter(([id]) => !targets.has(Number(id)))
-  const added = categoryId === null
-    ? []
-    : [...targets].filter((id) => transaction(id).category !== categoryId).map((id) => [String(id), categoryId] as const)
+  const added = [...targets].flatMap(([id, categoryId]) => (
+    categoryId === null || transaction(id).category === categoryId ? [] : [[String(id), categoryId] as const]
+  ))
   commit({ categories: Object.freeze(Object.fromEntries([...kept, ...added])) })
 }
 
@@ -232,8 +229,4 @@ export function categoryEditEntries(categories: Edits['categories']): Array<[num
 
 export function useEdits(): Edits {
   return useSyncExternalStore(subscribeEdits, getEdits)
-}
-
-export function useCategoryEdit(id: number): CategoryId | null {
-  return useSyncExternalStore(subscribeEdits, () => getEdits().categories[id] ?? null)
 }

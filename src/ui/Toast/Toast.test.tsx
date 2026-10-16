@@ -47,6 +47,31 @@ describe('toast store', () => {
     })
     expect(getToasts()).toEqual([])
   })
+
+  it('calls onDismiss once when a toast leaves by time, by the user or by clearing', () => {
+    const byTime = vi.fn()
+    const byUser = vi.fn()
+    const byClear = vi.fn()
+    toast({ title: 'Categorised as Travel', duration: 100, onDismiss: byTime })
+    const id = toast({ title: 'Categorised as Meals', onDismiss: byUser })
+    toast({ title: 'Categorised as Rent', onDismiss: byClear })
+
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(byTime).toHaveBeenCalledTimes(1)
+    act(() => {
+      dismiss(id)
+      dismiss(id)
+    })
+    expect(byUser).toHaveBeenCalledTimes(1)
+    expect(byClear).not.toHaveBeenCalled()
+    act(() => {
+      dismissAllToasts()
+    })
+    expect(byClear).toHaveBeenCalledTimes(1)
+    expect(byTime).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('ToastRegion', () => {

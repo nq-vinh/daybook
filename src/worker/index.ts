@@ -1,4 +1,5 @@
-import { convert, RATES_PER_100_EUR } from '../domain/fx'
+import { forecast } from '../domain/forecast'
+import { convert, RATES_PER_100_EUR, roundHalfAwayFromZero } from '../domain/fx'
 import {
   type AccountSeries,
   COMPLETE_MONTHS,
@@ -334,7 +335,7 @@ export function cardSpend(index: LedgerIndex): CardSpend[] {
   }))
 }
 
-export function budgetSpend(index: LedgerIndex): BudgetSpend[] {
+export function budgetSpend(index: LedgerIndex, monthEndExpense: number): BudgetSpend[] {
   const monthToDate = new Array<number>(CATEGORIES.length).fill(0)
   const recent = new Array<number>(CATEGORIES.length).fill(0)
   for (let id = 0; id < index.size; id += 1) {
@@ -349,10 +350,12 @@ export function budgetSpend(index: LedgerIndex): BudgetSpend[] {
   const recentTotal = codesOf.reduce((sum, code) => sum + (recent[code] ?? 0), 0)
   return EXPENSE_CATEGORIES.map((categoryId: ExpenseCategoryId, position) => {
     const code = codesOf[position] ?? 0
+    const share = recentTotal === 0 ? 0 : (recent[code] ?? 0) / recentTotal
     return {
       categoryId,
       monthToDate: monthToDate[code] ?? 0,
-      share: recentTotal === 0 ? 0 : (recent[code] ?? 0) / recentTotal,
+      share,
+      projected: roundHalfAwayFromZero(monthEndExpense * share),
     }
   })
 }
@@ -412,4 +415,8 @@ export function ledgerSeries(accountId: AccountId | null): LedgerSeries {
     },
     currency: 'EUR',
   }
+}
+
+export function monthEndExpense(): number {
+  return forecast(ledgerSeries(null)).expense[0] ?? 0
 }

@@ -160,18 +160,18 @@ export const COUNTERPARTIES = [
 export type CounterpartyId = (typeof COUNTERPARTIES)[number]['id']
 
 export const CARDS = [
-  { id: 'card-01', holder: 'Ilse Marwick', last4: '4417', accountId: 'acc-main', monthlyLimit: 1_000_000, status: 'active' },
-  { id: 'card-02', holder: 'Teodor Vasko', last4: '0932', accountId: 'acc-main', monthlyLimit: 500_000, status: 'active' },
-  { id: 'card-03', holder: 'Nuala Brenning', last4: '7261', accountId: 'acc-main', monthlyLimit: 300_000, status: 'active' },
-  { id: 'card-04', holder: 'Joaquim Ferlo', last4: '5580', accountId: 'acc-main', monthlyLimit: 300_000, status: 'frozen' },
-  { id: 'card-05', holder: 'Saskia Odeh', last4: '1846', accountId: 'acc-main', monthlyLimit: 250_000, status: 'active' },
-  { id: 'card-06', holder: 'Bram Ellery', last4: '3029', accountId: 'acc-main', monthlyLimit: 200_000, status: 'active' },
-  { id: 'card-07', holder: 'Mirela Kostand', last4: '6673', accountId: 'acc-ops', monthlyLimit: 800_000, status: 'active' },
-  { id: 'card-08', holder: 'Emeka Sorvald', last4: '2195', accountId: 'acc-ops', monthlyLimit: 400_000, status: 'active' },
-  { id: 'card-09', holder: 'Lotte Varhune', last4: '8804', accountId: 'acc-ops', monthlyLimit: 400_000, status: 'frozen' },
-  { id: 'card-10', holder: 'Casimir Pell', last4: '4752', accountId: 'acc-ops', monthlyLimit: 250_000, status: 'active' },
-  { id: 'card-11', holder: 'Yara Thessaly', last4: '9318', accountId: 'acc-uk', monthlyLimit: 400_000, status: 'active' },
-  { id: 'card-12', holder: 'Oren Tallis', last4: '0467', accountId: 'acc-uk', monthlyLimit: 250_000, status: 'active' },
+  { id: 'card-01', holder: 'Ilse Marwick', last4: '4417', accountId: 'acc-main', monthlyLimit: 3_000_000, status: 'active' },
+  { id: 'card-02', holder: 'Teodor Vasko', last4: '0932', accountId: 'acc-main', monthlyLimit: 4_000_000, status: 'active' },
+  { id: 'card-03', holder: 'Nuala Brenning', last4: '7261', accountId: 'acc-main', monthlyLimit: 2_400_000, status: 'active' },
+  { id: 'card-04', holder: 'Joaquim Ferlo', last4: '5580', accountId: 'acc-main', monthlyLimit: 3_000_000, status: 'frozen' },
+  { id: 'card-05', holder: 'Saskia Odeh', last4: '1846', accountId: 'acc-main', monthlyLimit: 5_000_000, status: 'active' },
+  { id: 'card-06', holder: 'Bram Ellery', last4: '3029', accountId: 'acc-main', monthlyLimit: 4_000_000, status: 'active' },
+  { id: 'card-07', holder: 'Mirela Kostand', last4: '6673', accountId: 'acc-ops', monthlyLimit: 6_000_000, status: 'active' },
+  { id: 'card-08', holder: 'Emeka Sorvald', last4: '2195', accountId: 'acc-ops', monthlyLimit: 4_000_000, status: 'active' },
+  { id: 'card-09', holder: 'Lotte Varhune', last4: '8804', accountId: 'acc-ops', monthlyLimit: 4_000_000, status: 'frozen' },
+  { id: 'card-10', holder: 'Casimir Pell', last4: '4752', accountId: 'acc-ops', monthlyLimit: 7_500_000, status: 'active' },
+  { id: 'card-11', holder: 'Yara Thessaly', last4: '9318', accountId: 'acc-uk', monthlyLimit: 5_000_000, status: 'active' },
+  { id: 'card-12', holder: 'Oren Tallis', last4: '0467', accountId: 'acc-uk', monthlyLimit: 4_000_000, status: 'active' },
 ] as const satisfies readonly Card[]
 
 export type CardId = (typeof CARDS)[number]['id']

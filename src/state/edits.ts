@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 import { transaction, TRANSACTION_COUNT } from '../domain/transactions'
 import { BUDGETS, type CardId, CARDS, CATEGORIES, type CategoryId, type ExpenseCategoryId } from '../domain/world'
+import { MAX_MINOR_UNITS } from '../ui/NumberField/money'
 
 export type CardStatus = 'active' | 'frozen'
 
@@ -34,8 +35,8 @@ function isTransactionId(value: number): boolean {
   return Number.isInteger(value) && value >= 0 && value < TRANSACTION_COUNT
 }
 
-function isBudgetAmount(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+export function isBudgetAmount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= MAX_MINOR_UNITS
 }
 
 function findCategory(value: unknown): CategoryId | null {

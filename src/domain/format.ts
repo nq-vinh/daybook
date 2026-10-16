@@ -17,6 +17,10 @@ export function defaultLocale(): string {
   return typeof navigator !== 'undefined' && navigator.language !== '' ? navigator.language : 'en-GB'
 }
 
+export function formatCount(value: number, locale = defaultLocale()): string {
+  return new Intl.NumberFormat(locale).format(value)
+}
+
 export function formatMoney(minor: number, currency: Currency, locale = defaultLocale()): string {
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(minor / 100)
 }

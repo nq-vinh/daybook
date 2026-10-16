@@ -15,6 +15,7 @@ export interface ProgressBarProps {
   readonly high?: number | undefined
   readonly optimum?: number | undefined
   readonly className?: string | undefined
+  readonly 'aria-describedby'?: string | undefined
 }
 
 export function progressState(value: number, min: number, max: number, high: number | undefined): ProgressState {
@@ -25,7 +26,18 @@ export function progressState(value: number, min: number, max: number, high: num
   return value >= (high ?? min + (max - min) * 0.8) ? 'warning' : 'normal'
 }
 
-export function ProgressBar({ label, value, valueText, min = 0, max = 1, low, high, optimum, className }: ProgressBarProps) {
+export function ProgressBar({
+  label,
+  value,
+  valueText,
+  min = 0,
+  max = 1,
+  low,
+  high,
+  optimum,
+  className,
+  'aria-describedby': describedBy,
+}: ProgressBarProps) {
   const id = useId()
   const state = progressState(value, min, max, high)
 
@@ -45,6 +57,7 @@ export function ProgressBar({ label, value, valueText, min = 0, max = 1, low, hi
         high={high}
         optimum={optimum}
         aria-valuetext={valueText}
+        aria-describedby={describedBy}
       />
     </div>
   )

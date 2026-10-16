@@ -15,6 +15,7 @@ import {
   counterpartyHistory,
   type LedgerIndex,
   ledgerSeries,
+  monthEndExpense,
   queryLedger,
 } from './index'
 
@@ -290,6 +291,15 @@ describe('cardSpend', () => {
   })
 })
 
+describe('card limits', () => {
+  it('puts one seeded card over its limit, two in the 80 to 100 % band and the rest below it', () => {
+    const ratios = cardSpend(index).map((entry) => entry.monthToDate / (CARDS.find((card) => card.id === entry.cardId)?.monthlyLimit ?? 1))
+    expect(ratios.filter((ratio) => ratio >= 1)).toHaveLength(1)
+    expect(ratios.filter((ratio) => ratio >= 0.8 && ratio < 1)).toHaveLength(2)
+    expect(ratios.filter((ratio) => ratio < 0.8)).toHaveLength(CARDS.length - 3)
+  })
+})
+
 describe('budgetSpend', () => {
   it('returns the month-to-date spend in EUR and the share of the last three complete months per expense category', () => {
     const monthToDateStart = monthStart(COMPLETE_MONTHS)
@@ -301,7 +311,7 @@ describe('budgetSpend', () => {
       .reduce((sum, entry) => sum + inEur(entry), 0))
     const recentTotal = recent.reduce((sum, value) => sum + value, 0)
 
-    const result = budgetSpend(index)
+    const result = budgetSpend(index, 1_000_000)
     expect(result.map((entry) => entry.categoryId)).toEqual(expenseIds)
     expect(result.map((entry) => entry.monthToDate)).toEqual(expenseIds.map((categoryId) => rows
       .filter((entry) => entry.category === categoryId && entry.bookedAt >= monthToDateStart)
@@ -310,6 +320,16 @@ describe('budgetSpend', () => {
       expect(entry.share).toBeCloseTo((recent[position] ?? 0) / recentTotal, 12)
     })
     expect(result.reduce((sum, entry) => sum + entry.share, 0)).toBeCloseTo(1, 12)
+    expect(result.map((entry) => entry.projected)).toEqual(result.map((entry) => Math.round(entry.share * 1_000_000)))
+  })
+
+  it('projects the month end from the EUR expense forecast over the complete months up to August 2026', () => {
+    const series = ledgerSeries(null)
+    expect(series.currency).toBe('EUR')
+    expect(series.expense).toHaveLength(COMPLETE_MONTHS)
+    expect(monthStart(COMPLETE_MONTHS - 1)).toBe(Date.UTC(2026, 7, 1))
+    expect(monthStart(COMPLETE_MONTHS)).toBe(Date.UTC(2026, 8, 1))
+    expect(monthEndExpense()).toBe(119_136_903)
   })
 })
 

@@ -1,7 +1,7 @@
+import { formatCount } from '../../domain/format'
 import type { CategoryId } from '../../domain/world'
 import { categoriesAction, type CommitHandle, commitLater, release, undo, type UndoResult } from '../../state/optimistic'
 import { toast } from '../../state/toast'
-import { formatCount } from './filters'
 
 export function undoTitle({ restored, total }: UndoResult): string {
   if (total === 1) {

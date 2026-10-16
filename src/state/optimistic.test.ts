@@ -2,71 +2,138 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { mulberry32 } from '../domain/prng'
 import { transaction } from '../domain/transactions'
-import { CATEGORIES, type CategoryId } from '../domain/world'
-import { type Edits, getEdits, setCategoryEntries } from './edits'
+import { BUDGETS, type CardId, CARDS, CATEGORIES, type CategoryId, type ExpenseCategoryId } from '../domain/world'
+import { type CardStatus, type Edits, getEdits, setBudget, setCardStatus, setCategoryEntries } from './edits'
 import {
+  budgetsAction,
   cancelAllForTest,
+  cardsAction,
   categoriesAction,
   COMMIT_LATENCY_MS,
   commitLater,
   flushForTest,
+  getEffectiveBudget,
+  getEffectiveBudgets,
+  getEffectiveCardStatus,
   getEffectiveCategories,
   HISTORY_LIMIT,
+  keyListenerCountForTest,
   release,
+  subscribeEffectiveBudget,
+  subscribeEffectiveBudgets,
+  subscribeEffectiveCard,
   subscribeEffectiveCategories,
   undo,
 } from './optimistic'
 
 const POOL = [0, 1, 2, 3, 4, 5]
 
+type ModelValue = string | number | null
+
 interface ModelAction {
   readonly id: string
-  readonly ids: readonly number[]
-  readonly categoryId: CategoryId | null
+  readonly entries: ReadonlyArray<readonly [string, ModelValue]>
   readonly commitAt: number
   committed: boolean
 }
 
 type StoreEvent =
   | { readonly kind: 'action'; readonly action: ModelAction }
-  | { readonly kind: 'outside'; readonly entries: ReadonlyArray<readonly [number, CategoryId]> }
+  | { readonly kind: 'outside'; readonly entries: ReadonlyArray<readonly [string, ModelValue]> }
+
+const CARD_POOL: readonly CardId[] = ['card-01', 'card-04']
+const BUDGET_POOL: readonly ExpenseCategoryId[] = ['travel', 'meals']
 
 function other(id: number, offset = 1): CategoryId {
   const index = CATEGORIES.findIndex((category) => category.id === transaction(id).category)
   return CATEGORIES[(index + offset) % CATEGORIES.length]?.id ?? 'travel'
 }
 
-function write(state: Partial<Record<number, CategoryId>>, id: number, categoryId: CategoryId | null): void {
-  if (categoryId === null || categoryId === transaction(id).category) {
-    Reflect.deleteProperty(state, id)
+function seededCard(cardId: string): CardStatus | null {
+  return CARDS.find((card) => card.id === cardId)?.status ?? null
+}
+
+function seededBudget(categoryId: string): number | null {
+  return BUDGETS.find((budget) => budget.categoryId === categoryId)?.monthlyAmount ?? null
+}
+
+function seededOf(key: string): ModelValue {
+  const [kind = '', raw = ''] = key.split(':')
+  if (kind === 'categories') {
+    return transaction(Number(raw)).category
+  }
+  return kind === 'cards' ? seededCard(raw) : seededBudget(raw)
+}
+
+type Flat = Record<string, ModelValue>
+
+function write(state: Flat, key: string, value: ModelValue): void {
+  if (value === null || value === seededOf(key)) {
+    Reflect.deleteProperty(state, key)
   } else {
-    state[id] = categoryId
+    state[key] = value
   }
 }
 
-function replayStore(initial: Edits['categories'], timeline: readonly StoreEvent[]): Edits['categories'] {
-  const state: Partial<Record<number, CategoryId>> = { ...initial }
+function replayStore(initial: Flat, timeline: readonly StoreEvent[]): Flat {
+  const state: Flat = { ...initial }
   for (const event of timeline) {
-    const entries = event.kind === 'outside' ? event.entries : event.action.ids.map((id) => [id, event.action.categoryId] as const)
-    for (const [id, categoryId] of entries) {
-      write(state, id, categoryId)
+    for (const [key, value] of event.kind === 'outside' ? event.entries : event.action.entries) {
+      write(state, key, value)
     }
   }
   return state
 }
 
-function overlay(store: Edits['categories'], actions: readonly ModelAction[]): Edits['categories'] {
-  const state: Partial<Record<number, CategoryId>> = { ...store }
+function overlay(store: Flat, actions: readonly ModelAction[]): Flat {
+  const state: Flat = { ...store }
   for (const action of actions) {
-    for (const id of action.ids) {
-      write(state, id, action.categoryId)
+    for (const [key, value] of action.entries) {
+      write(state, key, value)
     }
   }
   return state
+}
+
+function flatten(edits: Pick<Edits, 'categories' | 'cards' | 'budgets'>): Flat {
+  const state: Flat = {}
+  const sections: ReadonlyArray<readonly [string, Readonly<Record<string, ModelValue | undefined>>]> = [
+    ['categories', edits.categories],
+    ['cards', edits.cards],
+    ['budgets', edits.budgets],
+  ]
+  for (const [kind, section] of sections) {
+    for (const [id, value] of Object.entries(section)) {
+      state[`${kind}:${id}`] = value ?? null
+    }
+  }
+  return state
+}
+
+function flattenEffective(): Flat {
+  const state = flatten({ categories: getEffectiveCategories(), cards: {}, budgets: {} })
+  for (const card of CARDS) {
+    write(state, `cards:${card.id}`, getEffectiveCardStatus(card.id))
+  }
+  for (const budget of BUDGETS) {
+    write(state, `budgets:${budget.categoryId}`, getEffectiveBudget(budget.categoryId))
+  }
+  return state
+}
+
+function storedFlat(): Flat {
+  const raw = window.localStorage.getItem('edits')
+  return raw === null ? {} : flatten(JSON.parse(raw) as Pick<Edits, 'categories' | 'cards' | 'budgets'>)
 }
 
 function resetPool(): void {
   setCategoryEntries(POOL.map((id) => [id, null] as const))
+  for (const cardId of CARD_POOL) {
+    setCardStatus(cardId, seededCard(cardId) ?? 'active')
+  }
+  for (const categoryId of BUDGET_POOL) {
+    setBudget(categoryId, null)
+  }
 }
 
 function storedCategories(): unknown {
@@ -235,15 +302,129 @@ describe('optimistic category edits', () => {
     expect(listener).toHaveBeenCalled()
     stop()
   })
+})
 
-  it('keeps both stores equal to a replay of the surviving actions and outside writes for seeded sequences', () => {
-    const actionValues: ReadonlyArray<CategoryId | null> = [
+describe('optimistic card and budget edits', () => {
+  it('freezes a card at once, writes it after the latency and undo before the commit writes nothing', async () => {
+    const handle = commitLater(cardsAction('card-01', 'frozen'))
+    expect(getEffectiveCardStatus('card-01')).toBe('frozen')
+    expect(getEdits().cards['card-01']).toBeUndefined()
+
+    expect(undo(handle.id)).toEqual({ restored: 1, total: 1 })
+    await expect(handle.settled).resolves.toBeUndefined()
+    vi.runAllTimers()
+    expect(getEdits().cards).toEqual({})
+    expect(getEffectiveCardStatus('card-01')).toBe('active')
+  })
+
+  it('restores the card status in both stores when undo follows the commit', () => {
+    const handle = commitLater(cardsAction('card-04', 'active'))
+    vi.advanceTimersByTime(COMMIT_LATENCY_MS)
+    expect(getEdits().cards['card-04']).toBe('active')
+
+    expect(undo(handle.id)).toEqual({ restored: 1, total: 1 })
+    expect(getEdits().cards).toEqual({})
+    expect(getEffectiveCardStatus('card-04')).toBe('frozen')
+    expect(storedFlat()).toEqual(flatten(getEdits()))
+  })
+
+  it('hands a budget over to the newer action layered on it and keeps it when the older one is undone', () => {
+    const older = commitLater(budgetsAction('travel', 100_000))
+    const newer = commitLater(budgetsAction('travel', 250_000))
+    flushForTest()
+
+    expect(undo(older.id)).toEqual({ restored: 0, total: 1 })
+    expect(getEdits().budgets.travel).toBe(250_000)
+    expect(undo(newer.id)).toEqual({ restored: 1, total: 1 })
+    expect(getEdits().budgets).toEqual({})
+    expect(getEffectiveBudget('travel')).toBe(seededBudget('travel'))
+  })
+
+  it('restores a budget after the commit and leaves one changed outside the layer', () => {
+    const restored = commitLater(budgetsAction('meals', 100_000))
+    const kept = commitLater(budgetsAction('travel', 100_000))
+    flushForTest()
+    setBudget('travel', 777_700)
+
+    expect(undo(restored.id)).toEqual({ restored: 1, total: 1 })
+    expect(undo(kept.id)).toEqual({ restored: 0, total: 1 })
+    expect(getEdits().budgets).toEqual({ travel: 777_700 })
+  })
+
+  it('rejects a negative or fractional budget', () => {
+    expect(() => commitLater({ kind: 'budgets', categoryId: 'travel', monthlyAmount: -1, previous: 0 })).toThrow(RangeError)
+    expect(() => commitLater({ kind: 'budgets', categoryId: 'travel', monthlyAmount: 1.5, previous: 0 })).toThrow(RangeError)
+    expect(() => commitLater({ kind: 'budgets', categoryId: 'travel', monthlyAmount: 9e15, previous: 0 })).toThrow(RangeError)
+  })
+
+  it('notifies only the subscribers of the changed key and keeps the budgets snapshot stable for card actions', () => {
+    const sameCard = vi.fn()
+    const otherCard = vi.fn()
+    const categories = vi.fn()
+    const stops = [
+      subscribeEffectiveCard('card-01', sameCard),
+      subscribeEffectiveCard('card-02', otherCard),
+      subscribeEffectiveCategories(categories),
+    ]
+    expect(keyListenerCountForTest()).toBe(2)
+    const budgets = getEffectiveBudgets()
+    const categoriesBefore = getEffectiveCategories()
+
+    commitLater(cardsAction('card-01', 'frozen'))
+    expect(sameCard).toHaveBeenCalledTimes(1)
+    expect(otherCard).not.toHaveBeenCalled()
+    expect(categories).not.toHaveBeenCalled()
+    expect(getEffectiveBudgets()).toBe(budgets)
+    expect(getEffectiveCategories()).toBe(categoriesBefore)
+
+    for (const stop of stops) {
+      stop()
+    }
+    expect(keyListenerCountForTest()).toBe(0)
+  })
+
+  it('leaves card and category subscribers alone for a budget action', () => {
+    const card = vi.fn()
+    const categories = vi.fn()
+    const sameBudget = vi.fn()
+    const otherBudget = vi.fn()
+    const budgetsList = vi.fn()
+    const stops = [
+      subscribeEffectiveCard('card-01', card),
+      subscribeEffectiveCategories(categories),
+      subscribeEffectiveBudget('travel', sameBudget),
+      subscribeEffectiveBudget('meals', otherBudget),
+      subscribeEffectiveBudgets(budgetsList),
+    ]
+    const categoriesBefore = getEffectiveCategories()
+    const budgetsBefore = getEffectiveBudgets()
+
+    commitLater(budgetsAction('travel', 100_000))
+    expect(sameBudget).toHaveBeenCalledTimes(1)
+    expect(budgetsList).toHaveBeenCalledTimes(1)
+    expect(otherBudget).not.toHaveBeenCalled()
+    expect(card).not.toHaveBeenCalled()
+    expect(categories).not.toHaveBeenCalled()
+    expect(getEffectiveCategories()).toBe(categoriesBefore)
+    expect(getEffectiveBudgets()).not.toBe(budgetsBefore)
+    expect(getEffectiveBudgets().get('travel')).toBe(100_000)
+
+    for (const stop of stops) {
+      stop()
+    }
+  })
+
+  it('keeps both stores equal to a replay of the surviving actions and outside writes for seeded sequences over every kind', () => {
+    const categoryValues: ReadonlyArray<CategoryId | null> = [
       null,
       ...POOL.map((id) => transaction(id).category),
       ...POOL.slice(0, 3).map((id) => other(id)),
     ]
-    const outsideValues = CATEGORIES.map((category) => category.id).filter((id) => !actionValues.includes(id))
-    expect(outsideValues.length).toBeGreaterThan(0)
+    const outsideCategories = CATEGORIES.map((category) => category.id).filter((id) => !categoryValues.includes(id))
+    expect(outsideCategories.length).toBeGreaterThan(0)
+    const statuses: readonly CardStatus[] = ['active', 'frozen']
+    const budgetValues = [...BUDGET_POOL.map((categoryId) => seededBudget(categoryId) ?? 0), 100_000, 250_000]
+    const outsideBudgets = [777_700, 888_800]
 
     for (let seed = 1; seed <= 150; seed += 1) {
       cancelAllForTest()
@@ -256,8 +437,8 @@ describe('optimistic category edits', () => {
         }
         return item
       }
-      setCategoryEntries([[pick(POOL), pick(outsideValues)]])
-      const initial = getEdits().categories
+      setCategoryEntries([[pick(POOL), pick(outsideCategories)]])
+      const initial = flatten(getEdits())
       const timeline: StoreEvent[] = []
       const undone: string[] = []
       let surviving: ModelAction[] = []
@@ -266,11 +447,27 @@ describe('optimistic category edits', () => {
       for (let step = 0; step < 40; step += 1) {
         const roll = random()
         if (roll < 0.4) {
-          const chosen = POOL.filter(() => random() < 0.4)
-          const ids = chosen.length === 0 ? [pick(POOL)] : chosen
-          const categoryId = pick(actionValues)
-          const { id } = commitLater(categoriesAction(ids, categoryId))
-          surviving.push({ id, ids, categoryId, commitAt: now + COMMIT_LATENCY_MS, committed: false })
+          const kind = random()
+          let id: string
+          let entries: Array<readonly [string, ModelValue]>
+          if (kind < 0.5) {
+            const chosen = POOL.filter(() => random() < 0.4)
+            const ids = chosen.length === 0 ? [pick(POOL)] : chosen
+            const categoryId = pick(categoryValues)
+            id = commitLater(categoriesAction(ids, categoryId)).id
+            entries = ids.map((target) => [`categories:${String(target)}`, categoryId] as const)
+          } else if (kind < 0.75) {
+            const cardId = pick(CARD_POOL)
+            const status = pick(statuses)
+            id = commitLater(cardsAction(cardId, status)).id
+            entries = [[`cards:${cardId}`, status]]
+          } else {
+            const categoryId = pick(BUDGET_POOL)
+            const amount = pick(budgetValues)
+            id = commitLater(budgetsAction(categoryId, amount)).id
+            entries = [[`budgets:${categoryId}`, amount]]
+          }
+          surviving.push({ id, entries, commitAt: now + COMMIT_LATENCY_MS, committed: false })
         } else if (roll < 0.7) {
           const elapsed = Math.floor(random() * 2.5 * COMMIT_LATENCY_MS)
           now += elapsed
@@ -282,8 +479,15 @@ describe('optimistic category edits', () => {
           }
           vi.advanceTimersByTime(elapsed)
         } else if (roll < 0.78) {
-          const entries = POOL.filter(() => random() < 0.3).map((id) => [id, pick(outsideValues)] as const)
-          setCategoryEntries(entries)
+          const categoryEntries = POOL.filter(() => random() < 0.3).map((id) => [id, pick(outsideCategories)] as const)
+          setCategoryEntries(categoryEntries)
+          const entries: Array<readonly [string, ModelValue]> = categoryEntries.map(([id, value]) => [`categories:${String(id)}`, value] as const)
+          if (random() < 0.5) {
+            const categoryId = pick(BUDGET_POOL)
+            const amount = pick(outsideBudgets)
+            setBudget(categoryId, amount)
+            entries.push([`budgets:${categoryId}`, amount])
+          }
           timeline.push({ kind: 'outside', entries })
         } else if (surviving.length > 0) {
           const target = pick(surviving)
@@ -299,8 +503,8 @@ describe('optimistic category edits', () => {
         }
 
         const store = replayStore(initial, timeline)
-        expect(getEdits().categories).toEqual(store)
-        expect(getEffectiveCategories()).toEqual(overlay(store, surviving.filter((action) => !action.committed)))
+        expect(flatten(getEdits())).toEqual(store)
+        expect(flattenEffective()).toEqual(overlay(store, surviving.filter((action) => !action.committed)))
       }
 
       vi.runAllTimers()
@@ -308,9 +512,9 @@ describe('optimistic category edits', () => {
         action.committed = true
         timeline.push({ kind: 'action', action })
       }
-      expect(getEdits().categories).toEqual(replayStore(initial, timeline))
-      expect(getEffectiveCategories()).toEqual(getEdits().categories)
-      expect(storedCategories()).toEqual(getEdits().categories)
+      expect(flatten(getEdits())).toEqual(replayStore(initial, timeline))
+      expect(flattenEffective()).toEqual(flatten(getEdits()))
+      expect(storedFlat()).toEqual(flatten(getEdits()))
     }
   })
 })

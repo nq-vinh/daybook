@@ -2,7 +2,7 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { dismiss, dismissAllToasts, getToasts, toast } from '../../state/toast'
+import { ACTION_DURATION_MS, DEFAULT_DURATION_MS, dismiss, dismissAllToasts, getToasts, toast } from '../../state/toast'
 import { ToastRegion } from './Toast'
 
 function show(title: string, extra: Partial<Parameters<typeof toast>[0]> = {}): string {
@@ -123,7 +123,20 @@ describe('ToastRegion', () => {
     advance(10000)
     expect(screen.getByRole('article')).toBeInTheDocument()
     await user.tab()
-    advance(6000)
+    advance(ACTION_DURATION_MS)
+    expect(screen.queryByRole('article')).not.toBeInTheDocument()
+  })
+
+  it('keeps a toast with an action for 10 s so its button can be reached by keyboard, and a plain one for 6 s', () => {
+    setup()
+    show('Saved the Travel budget as €2,000.00', { action: { label: 'Undo', onAction: () => undefined } })
+    show('Restored the Travel budget')
+
+    advance(DEFAULT_DURATION_MS)
+    expect(screen.getAllByRole('article').map((article) => article.textContent)).toEqual([expect.stringContaining('Saved the Travel budget')])
+    advance(ACTION_DURATION_MS - DEFAULT_DURATION_MS - 100)
+    expect(screen.getAllByRole('article')).toHaveLength(1)
+    advance(100)
     expect(screen.queryByRole('article')).not.toBeInTheDocument()
   })
 

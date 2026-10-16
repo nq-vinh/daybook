@@ -1,4 +1,3 @@
-import { defaultLocale } from '../../domain/format'
 import { type AccountId, ACCOUNTS, type CardId, CARDS, CATEGORIES, WINDOW_START, TODAY } from '../../domain/world'
 import { getLocation, navigate } from '../../router/history'
 import { DEFAULT_FILTER, type FilterState, parseFilter, serializeFilter } from '../../state/url'
@@ -11,10 +10,6 @@ export const CATEGORY_GROUPS = [
   { label: 'Income', categories: CATEGORIES.filter((category) => category.kind === 'income') },
   { label: 'Expense', categories: CATEGORIES.filter((category) => category.kind === 'expense') },
 ] as const
-
-export function formatCount(value: number): string {
-  return new Intl.NumberFormat(defaultLocale()).format(value)
-}
 
 export const FIRST_DAY = isoDay(WINDOW_START)
 

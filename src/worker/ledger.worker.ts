@@ -6,6 +6,7 @@ import {
   cardSpend,
   counterpartyHistory,
   ledgerSeries,
+  monthEndExpense,
   queryLedger,
 } from './index'
 import { assertNever, type LedgerRequest, type LedgerResponse } from './protocol'
@@ -41,7 +42,7 @@ function handle(request: LedgerRequest): void {
       respond({ type: 'cards', requestId: request.requestId, cards: cardSpend(index) })
       return
     case 'budgets':
-      respond({ type: 'budgets', requestId: request.requestId, budgets: budgetSpend(index) })
+      respond({ type: 'budgets', requestId: request.requestId, budgets: budgetSpend(index, monthEndExpense()) })
       return
     default:
       assertNever(request)

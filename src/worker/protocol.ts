@@ -35,6 +35,7 @@ export interface BudgetSpend {
   readonly categoryId: ExpenseCategoryId
   readonly monthToDate: number
   readonly share: number
+  readonly projected: number
 }
 
 export type LedgerRequest =

@@ -2,7 +2,8 @@ import { useSyncExternalStore } from 'react'
 
 export const MAX_VISIBLE_TOASTS = 3
 export const TOAST_TICK_MS = 100
-const DEFAULT_DURATION_MS = 6000
+export const DEFAULT_DURATION_MS = 6000
+export const ACTION_DURATION_MS = 10_000
 
 export interface ToastAction {
   readonly label: string
@@ -81,10 +82,10 @@ function tick(): void {
   }
 }
 
-export function toast({ title, description, action, duration = DEFAULT_DURATION_MS, onDismiss }: ToastInput): string {
+export function toast({ title, description, action, duration, onDismiss }: ToastInput): string {
   const id = `toast-${String(nextId)}`
   nextId += 1
-  remaining.set(id, duration)
+  remaining.set(id, duration ?? (action === undefined ? DEFAULT_DURATION_MS : ACTION_DURATION_MS))
   if (onDismiss !== undefined) {
     dismissed.set(id, onDismiss)
   }

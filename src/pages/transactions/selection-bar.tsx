@@ -1,11 +1,12 @@
 import { useState } from 'react'
 
+import { formatCount } from '../../domain/format'
 import { CATEGORIES, type CategoryId } from '../../domain/world'
 import { Button } from '../../ui/Button/Button'
 import { Select } from '../../ui/Select/Select'
 import styles from '../transactions.module.css'
 import { categoriseWithUndo } from './categorise'
-import { CATEGORY_GROUPS, formatCount, SELECTION_LIMIT } from './filters'
+import { CATEGORY_GROUPS, SELECTION_LIMIT } from './filters'
 
 export interface SelectionBarProps {
   readonly selection: ReadonlySet<number>

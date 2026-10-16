@@ -100,6 +100,7 @@ describe('edits store', () => {
     expect(() => { setCategoryEntries([[100_000, 'travel']]) }).toThrow(RangeError)
     expect(() => { setNote(-1, 'x') }).toThrow(RangeError)
     expect(() => { setBudget('rent', 12.5) }).toThrow(RangeError)
+    expect(() => { setBudget('rent', 9e15) }).toThrow(RangeError)
   })
 
   it('loads stored edits and drops invalid entries', async () => {
@@ -107,7 +108,7 @@ describe('edits store', () => {
       version: 1,
       categories: { 5: 'travel', 6: 'nope', abc: 'travel', 100000: 'meals' },
       notes: { 5: 'kept', 7: 3 },
-      budgets: { travel: 100, revenue: 50, rent: -1 },
+      budgets: { travel: 100, revenue: 50, rent: -1, meals: 9e15 },
       cards: { 'card-02': 'frozen', 'card-99': 'frozen', 'card-03': 'lost' },
     })
 

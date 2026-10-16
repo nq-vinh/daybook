@@ -1,6 +1,7 @@
+import { accountCurrency, BUDGETS, CARDS } from '../../src/domain/world'
 import type { FilterState } from '../../src/state/url'
 import type { LedgerClient } from '../../src/worker/client'
-import type { LedgerResult } from '../../src/worker/protocol'
+import type { BudgetSpend, CardSpend, LedgerResult } from '../../src/worker/protocol'
 
 export interface PendingQuery {
   readonly filter: FilterState
@@ -15,7 +16,17 @@ export interface FakeLedgerClient {
   readonly calls: PendingQuery[]
 }
 
-export function fakeClient({ supersede = true }: { readonly supersede?: boolean } = {}): FakeLedgerClient {
+const ZERO_CARDS: readonly CardSpend[] = CARDS.map((card) => ({ cardId: card.id, monthToDate: 0, currency: accountCurrency(card.accountId) }))
+
+const ZERO_BUDGETS: readonly BudgetSpend[] = BUDGETS.map((budget) => ({ categoryId: budget.categoryId, monthToDate: 0, share: 0, projected: 0 }))
+
+export interface FakeClientOptions {
+  readonly supersede?: boolean
+  readonly cards?: readonly CardSpend[]
+  readonly budgets?: readonly BudgetSpend[]
+}
+
+export function fakeClient({ supersede = true, cards, budgets }: FakeClientOptions = {}): FakeLedgerClient {
   const calls: PendingQuery[] = []
   const client: LedgerClient = {
     query: (filter, channel) => {
@@ -31,8 +42,8 @@ export function fakeClient({ supersede = true }: { readonly supersede?: boolean 
     },
     history: () => Promise.resolve(new Int32Array(0)),
     series: () => Promise.reject(new Error('Series is not used here.')),
-    cards: () => Promise.reject(new Error('Cards are not used here.')),
-    budgets: () => Promise.reject(new Error('Budgets are not used here.')),
+    cards: () => Promise.resolve(cards ?? ZERO_CARDS),
+    budgets: () => Promise.resolve(budgets ?? ZERO_BUDGETS),
     setEdits: () => undefined,
     setFeed: () => undefined,
     ready: () => Promise.resolve(),

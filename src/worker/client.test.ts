@@ -124,7 +124,7 @@ describe('ledger client', () => {
     const cardsRequest = client.cards()
     const budgetsRequest = client.budgets()
     const cards: CardSpend[] = [{ cardId: 'card-01', monthToDate: 1_234, currency: 'EUR' }]
-    const budgets: BudgetSpend[] = [{ categoryId: 'travel', monthToDate: 5_678, share: 0.25 }]
+    const budgets: BudgetSpend[] = [{ categoryId: 'travel', monthToDate: 5_678, share: 0.25, projected: 9_000 }]
 
     current().message({ type: 'budgets', requestId: requestIds('budgets')[0] ?? -1, budgets })
     current().message({ type: 'cards', requestId: requestIds('cards')[0] ?? -1, cards })

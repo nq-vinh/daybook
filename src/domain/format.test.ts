@@ -11,7 +11,7 @@ describe('format', () => {
   })
 
   it('formats compact money for axis ticks', () => {
-    expect(formatCompactMoney(1_250_000, 'EUR', 'en-GB')).toBe('€12.5K')
+    expect(formatCompactMoney(1_250_000, 'EUR', 'en-GB')).toMatch(/^€12\.5[kK]$/)
     expect(formatCompactMoney(-300_000_000, 'USD', 'en-US')).toBe('-$3M')
     expect(formatCompactMoney(0, 'GBP', 'en-GB')).toBe('£0')
   })

@@ -129,7 +129,11 @@ async function renderLedger(search = '', landed = result(40)) {
     expect(calls.length).toBeGreaterThan(0)
   })
   await respond(latestCall(), landed)
-  await screen.findByRole('grid', { name: 'Ledger' }).catch(() => null)
+  if (landed.ids.length > 0) {
+    await screen.findByRole('grid', { name: 'Ledger' })
+  } else {
+    await screen.findByText('No transactions match these filters.')
+  }
   return user
 }
 
@@ -304,19 +308,26 @@ describe('TransactionsPage', () => {
   })
 
   it('cancels a pending search write when the location changes', async () => {
-    const user = await renderLedger()
+    await renderLedger()
     const field = screen.getByRole('searchbox', { name: 'Search transactions' })
+    vi.useFakeTimers()
+    // Testing Library only advances fake timers for its post-event setTimeout drain when a `jest` global exists.
+    vi.stubGlobal('jest', { advanceTimersByTime: (ms: number) => vi.advanceTimersByTime(ms) })
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
-    await user.type(field, 'ab')
-    await user.click(screen.getByRole('checkbox', { name: 'Software' }))
-    await act(async () => {
-      await new Promise((resolve) => {
-        setTimeout(resolve, 300)
+      await user.type(field, 'ab')
+      await user.click(screen.getByRole('checkbox', { name: 'Software' }))
+      act(() => {
+        vi.advanceTimersByTime(300)
       })
-    })
 
-    expect(window.location.search).toBe('?cat=software')
-    expect(field).toHaveValue('')
+      expect(window.location.search).toBe('?cat=software')
+      expect(field).toHaveValue('')
+    } finally {
+      vi.unstubAllGlobals()
+      vi.useRealTimers()
+    }
   })
 
   it('flushes the pending search write on Enter', async () => {

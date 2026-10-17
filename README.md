@@ -65,4 +65,4 @@ Manual memoisation is banned by ESLint; the React Compiler does it.
 The build is host-agnostic static files deployed to Azure Static Web Apps.
 `public/staticwebapp.config.json` is copied into `dist` and carries the SPA fallback, immutable caching for hashed assets, HSTS and the Content Security Policy: no `'unsafe-inline'`, with one sha256 hash for the theme bootstrap script; `vite preview` serves the same headers, so the Playwright suite asserts zero CSP violations against the real policy.
 CI (`.github/workflows/ci.yml`) runs one job: lint, unit tests, build, `verify:bundle`, Playwright, Lighthouse CI, and on pushes to `main` a deploy of the already-built `dist`.
-Live URL: TBD.
+Live at https://daybook.nqvinh.tech.

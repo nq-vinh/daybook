@@ -57,6 +57,43 @@ test('back restores the previous page', async ({ page }) => {
   await expect(announcer(page)).toHaveText('Overview')
 })
 
+test('main and the header share one content box, fluid at 1440 and centred at 2560', async ({ page }) => {
+  const measure = () => page.evaluate(() => {
+    const contentBox = (selector: string) => {
+      const element = document.querySelector(selector)
+      if (!element) throw new Error(`${selector} is missing`)
+      const box = element.getBoundingClientRect()
+      const style = getComputedStyle(element)
+      return { left: box.left + parseFloat(style.paddingLeft), right: box.right - parseFloat(style.paddingRight) }
+    }
+    const root = document.documentElement
+    return {
+      main: contentBox('main'),
+      bar: contentBox('header > div'),
+      nav: contentBox('header > nav'),
+      layoutWidth: root.getBoundingClientRect().width,
+      gutter: parseFloat(getComputedStyle(root).getPropertyValue('--gutter')),
+      maxWidth: parseFloat(getComputedStyle(root).getPropertyValue('--content-max-width')),
+    }
+  })
+
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Overview')
+  const fluid = await measure()
+  expect(fluid.main.right).toBeCloseTo(fluid.bar.right, 0)
+  expect(fluid.main.right).toBeCloseTo(fluid.nav.right, 0)
+  expect(fluid.main.left).toBeCloseTo(fluid.bar.left, 0)
+  expect(fluid.layoutWidth - fluid.main.right).toBeCloseTo(fluid.gutter, 0)
+  expect(fluid.main.left).toBeCloseTo(fluid.gutter, 0)
+
+  await page.setViewportSize({ width: 2560, height: 950 })
+  const centred = await measure()
+  expect(centred.main.right - centred.main.left).toBeCloseTo(centred.maxWidth, 0)
+  expect(centred.layoutWidth - centred.main.right).toBeCloseTo(centred.main.left, 0)
+  expect(centred.main.right).toBeCloseTo(centred.bar.right, 0)
+  expect(centred.main.left).toBeCloseTo(centred.bar.left, 0)
+})
+
 for (const colorScheme of ['light', 'dark'] as const) {
   test(`axe finds no violations in ${colorScheme} mode`, async ({ page }) => {
     await page.emulateMedia({ colorScheme })

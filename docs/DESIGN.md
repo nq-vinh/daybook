@@ -84,7 +84,7 @@ Z-index: `--z-sticky` 10, `--z-popover` 20, `--z-dialog` 30, `--z-toast` 40.
 +------------------------------------------------------------------+
 ```
 
-Content max width 1280 px, left aligned, 24 px gutters, 16 px under 900 px.
+Content is fluid between 24 px gutters (16 px under 900 px) up to a 1920 px content box and centred on wider viewports; the header bar and nav share that box, only the header rule runs full width.
 Sections are separated by hairline rules and an `h2`, not boxes. Raised surfaces are reserved for things that float or arrive (popovers, dialogs, toasts, the live feed card).
 Filter sidebar on `/transactions` is 260 px, collapses to a `<details>` disclosure under 900 px.
 

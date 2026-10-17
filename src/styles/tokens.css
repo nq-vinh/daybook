@@ -105,6 +105,7 @@
   --table-column-lg: 240px;
   --avatar-size-sm: var(--space-6);
   --avatar-size-md: var(--space-8);
+  --chart-plot-height: calc(var(--space-16) * 4);
 }
 
 :root[data-theme="light"] {

@@ -21,6 +21,14 @@ const CLOCK_STEP_MS = 500
 const MAX_CLOCK_STEPS = 240
 const FRAME_STEP_MS = 250
 const DATA_SECTIONS = 3
+const TILE_BREAKPOINT = 780
+const WIDE_FONT_FAMILY = '"DejaVu Sans", Verdana, sans-serif'
+const WIDE_SAMPLE = '+US$22,914.32 over 30 days'
+const METRICS = ['system', 'wide'] as const
+const PLOT_HEIGHT_PX = 256
+const SHRINK_WIDTH = 390
+
+type Metrics = (typeof METRICS)[number]
 
 async function observeLayoutShifts(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -149,6 +157,51 @@ async function runUntilArrivals(page: Page, count: number): Promise<void> {
   await expect(idleSections(page)).toHaveCount(DATA_SECTIONS)
 }
 
+async function useMetrics(page: Page, metrics: Metrics): Promise<void> {
+  if (metrics === 'system') {
+    return
+  }
+  await page.addInitScript((family) => {
+    const apply = (): boolean => {
+      const root = document.querySelector('html')
+      root?.style.setProperty('--font-family', family)
+      return root !== null
+    }
+    if (!apply()) {
+      new MutationObserver((_, observer) => {
+        if (apply()) {
+          observer.disconnect()
+        }
+      }).observe(document, { childList: true })
+    }
+  }, WIDE_FONT_FAMILY)
+}
+
+async function expectMetricsApplied(page: Page, metrics: Metrics): Promise<void> {
+  if (metrics === 'system') {
+    return
+  }
+  const applied = await page.evaluate((sample) => {
+    const context = document.createElement('canvas').getContext('2d')
+    const size = getComputedStyle(document.body).fontSize
+    const width = (font: string): number => {
+      if (context === null) {
+        return Number.NaN
+      }
+      context.font = font
+      return context.measureText(sample).width
+    }
+    const installed = (face: string): boolean => ['serif', 'monospace'].some((fallback) => width(`${size} "${face}", ${fallback}`) !== width(`${size} ${fallback}`))
+    return { family: getComputedStyle(document.body).fontFamily, faces: ['DejaVu Sans', 'Verdana'].filter(installed) }
+  }, WIDE_SAMPLE)
+  expect(applied.family).toBe(WIDE_FONT_FAMILY)
+  expect(applied.faces, 'neither DejaVu Sans nor Verdana is installed, so the wide metrics fall back').not.toEqual([])
+}
+
+function metricsSuffix(metrics: Metrics): string {
+  return metrics === 'system' ? '' : ' with wide font metrics'
+}
+
 async function showNewPayments(page: Page, count: number): Promise<void> {
   await page.getByRole('button', { name: count === 1 ? 'Show 1 new payment' : `Show ${String(count)} new payments` }).click()
 }
@@ -183,26 +236,30 @@ test.describe('overview layout stability', () => {
     expect(total).toBe(0)
   })
 
-  for (const width of [700, 720] as const) {
-    test(`cumulative layout shift on / at ${String(width)} px is 0 and no tile clips its money`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 900 })
-      await observeLayoutShifts(page)
-      await page.clock.install({ time: TODAY })
-      await page.goto('/')
-      await waitForOverview(page)
-      await runUntilArrivals(page, 2)
+  for (const metrics of METRICS) {
+    for (const width of [TILE_BREAKPOINT - 1, TILE_BREAKPOINT] as const) {
+      test(`cumulative layout shift on / at ${String(width)} px is 0 and no tile clips its money${metricsSuffix(metrics)}`, async ({ page }) => {
+        await useMetrics(page, metrics)
+        await page.setViewportSize({ width, height: 900 })
+        await observeLayoutShifts(page)
+        await page.clock.install({ time: TODAY })
+        await page.goto('/')
+        await waitForOverview(page)
+        await expectMetricsApplied(page, metrics)
+        await runUntilArrivals(page, 2)
 
-      const clipped = await page.locator('main [role="group"][aria-labelledby] p').evaluateAll((lines) => lines
-        .filter((line) => line.scrollWidth > line.clientWidth || line.getBoundingClientRect().right > (line.parentElement?.getBoundingClientRect().right ?? 0) + 0.5)
-        .map((line) => line.textContent))
-      expect(clipped).toEqual([])
-      const columns = await page.locator('main [role="group"][aria-labelledby]').evaluateAll((tiles) => new Set(tiles.map((tile) => Math.round(tile.getBoundingClientRect().left))).size)
-      expect(columns).toBe(width < 720 ? 1 : 3)
-      const { total, shifts } = await layoutShifts(page)
-      test.info().annotations.push({ type: `CLS / ${String(width)}`, description: String(total) })
-      expect(shifts, JSON.stringify(shifts)).toEqual([])
-      expect(total).toBe(0)
-    })
+        const clipped = await page.locator('main [role="group"][aria-labelledby] p').evaluateAll((lines) => lines
+          .filter((line) => line.scrollWidth > line.clientWidth || line.getBoundingClientRect().right > (line.parentElement?.getBoundingClientRect().right ?? 0) + 0.5)
+          .map((line) => line.textContent))
+        expect(clipped).toEqual([])
+        const columns = await page.locator('main [role="group"][aria-labelledby]').evaluateAll((tiles) => new Set(tiles.map((tile) => Math.round(tile.getBoundingClientRect().left))).size)
+        expect(columns).toBe(width < TILE_BREAKPOINT ? 1 : 3)
+        const { total, shifts } = await layoutShifts(page)
+        test.info().annotations.push({ type: `CLS / ${String(width)}${metricsSuffix(metrics)}`, description: String(total) })
+        expect(shifts, JSON.stringify(shifts)).toEqual([])
+        expect(total).toBe(0)
+      })
+    }
   }
 
   test('the feed card keeps one height from 0 to 8 events and its heading lines up with Cash flow', async ({ page }) => {
@@ -235,32 +292,53 @@ test.describe('overview layout stability', () => {
     expect(heights.every((value) => Math.abs(value - (heights[0] ?? 0)) < 0.5), JSON.stringify(heights)).toBe(true)
   })
 
-  test('the loading reservations match the loaded tile and figure heights at 1440', async ({ page }) => {
-    let release: () => void = () => undefined
-    const held = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    await page.route('**/assets/content-*.js', async (route) => {
-      await held
-      await route.continue()
-    })
-    await page.goto('/')
-    const skeleton = page.locator('[data-chart-skeleton]')
-    await expect(skeleton).toBeVisible()
-    const reserved = await page.evaluate(() => ({
-      chart: document.querySelector('[data-chart-skeleton]')?.getBoundingClientRect().height ?? 0,
-      tile: document.querySelector('main [data-skeleton]')?.parentElement?.getBoundingClientRect().height ?? 0,
-    }))
-    release()
-    await waitForOverview(page)
-    const loaded = await page.evaluate(() => ({
-      chart: document.querySelector('main figure')?.getBoundingClientRect().height ?? 0,
-      tile: document.querySelector('main [role="group"][aria-labelledby]')?.getBoundingClientRect().height ?? 0,
-    }))
-    test.info().annotations.push({ type: 'Reservations', description: JSON.stringify({ reserved, loaded }) })
-    expect(Math.abs(reserved.chart - loaded.chart), JSON.stringify({ reserved, loaded })).toBeLessThan(0.5)
-    expect(Math.abs(reserved.tile - loaded.tile), JSON.stringify({ reserved, loaded })).toBeLessThan(0.5)
-  })
+  for (const metrics of METRICS) {
+    for (const width of [SHRINK_WIDTH, 900, 1440] as const) {
+      test(`the loading reservations match the loaded tile and figure heights at ${String(width)}${metricsSuffix(metrics)}`, async ({ page }) => {
+        await useMetrics(page, metrics)
+        await page.setViewportSize({ width, height: 950 })
+        let release: () => void = () => undefined
+        const held = new Promise<void>((resolve) => {
+          release = resolve
+        })
+        await page.route('**/assets/content-*.js', async (route) => {
+          await held
+          await route.continue()
+        })
+        await page.goto('/')
+        const skeleton = page.locator('[data-chart-skeleton]')
+        await expect(skeleton).toBeVisible()
+        await expectMetricsApplied(page, metrics)
+        const reserved = await page.evaluate(() => ({
+          chart: document.querySelector('[data-chart-skeleton]')?.getBoundingClientRect().height ?? 0,
+          plot: document.querySelector('[data-chart-skeleton-plot]')?.getBoundingClientRect().height ?? 0,
+          tile: document.querySelector('main [data-skeleton]')?.parentElement?.getBoundingClientRect().height ?? 0,
+        }))
+        release()
+        await waitForOverview(page)
+        await expectMetricsApplied(page, metrics)
+        const loaded = await page.evaluate(() => {
+          const plot = document.querySelector('main figure canvas')?.parentElement
+          const summary = plot?.previousElementSibling
+          return {
+            chart: document.querySelector('main figure')?.getBoundingClientRect().height ?? 0,
+            plot: plot?.getBoundingClientRect().height ?? 0,
+            summary: summary?.getBoundingClientRect().height ?? 0,
+            summaryLine: summary === null || summary === undefined ? 0 : Number.parseFloat(getComputedStyle(summary).lineHeight),
+            tile: document.querySelector('main [role="group"][aria-labelledby]')?.getBoundingClientRect().height ?? 0,
+          }
+        })
+        test.info().annotations.push({ type: 'Reservations', description: JSON.stringify({ width, metrics, reserved, loaded }) })
+        expect(Math.abs(reserved.chart - loaded.chart), JSON.stringify({ reserved, loaded })).toBeLessThan(0.5)
+        expect(Math.abs(reserved.tile - loaded.tile), JSON.stringify({ reserved, loaded })).toBeLessThan(0.5)
+        expect(Math.abs(reserved.plot - PLOT_HEIGHT_PX), JSON.stringify({ reserved, loaded })).toBeLessThan(0.5)
+        if (width === SHRINK_WIDTH) {
+          expect(loaded.summary, JSON.stringify({ reserved, loaded })).toBeGreaterThan(loaded.summaryLine * 2 + 0.5)
+          expect(loaded.plot, JSON.stringify({ reserved, loaded })).toBeLessThan(PLOT_HEIGHT_PX - 0.5)
+        }
+      })
+    }
+  }
 
   test('cumulative layout shift on a cold load of /transactions is 0', async ({ page }) => {
     await observeLayoutShifts(page)

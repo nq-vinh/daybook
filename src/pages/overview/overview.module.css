@@ -2,7 +2,6 @@
   --overview-tile-height: calc(var(--space-16) * 2 + var(--space-2));
   --overview-flow-height: calc(var(--space-16) * 7 + var(--space-8));
   --overview-feed-height: calc(var(--space-16) * 7);
-  --overview-plot-height: calc(var(--space-16) * 4);
   --overview-category-height: var(--space-12);
   --overview-latest-height: calc((var(--table-row-height) + var(--rule-width)) * 11);
 
@@ -72,7 +71,6 @@
 .skeletonSummary {
   max-inline-size: var(--prose-max-width);
   block-size: 2lh;
-  font-size: var(--text-sm);
 }
 
 .skeletonSummary > [data-skeleton] {
@@ -80,8 +78,13 @@
   gap: calc(1lh - 1em);
 }
 
-.skeletonPlot {
-  block-size: var(--overview-plot-height);
+.skeletonLead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(var(--space-16), 1fr);
+  gap: var(--space-3);
+  min-block-size: calc(2lh + var(--space-3) + var(--chart-plot-height));
+  font-size: var(--text-sm);
 }
 
 .feed {
@@ -179,7 +182,7 @@
   }
 }
 
-@media (width < 720px) {
+@media (width < 780px) {
   .tiles {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -147,56 +147,58 @@ export function CashFlowChart({ months, currency, locale, caption = 'Net cash fl
   return (
     <figure className={styles.figure}>
       <figcaption className={styles.caption}>{caption}</figcaption>
-      <p className={styles.summary}>
-        {summaryParts.map((part, index) => (part.money ? <span key={index} className="money">{part.text}</span> : part.text))}
-      </p>
-      <div ref={plotRef} className={styles.plot}>
-        <canvas ref={canvasRef} className={styles.canvas} role="img" aria-label={summary} />
-        <div className={styles.crosshair} hidden={month === undefined} data-chart-crosshair="" />
-        <div ref={anchorRef<HTMLDivElement>('anchor-name', anchor)} className={styles.anchor} data-chart-anchor="" />
-        <div
-          className={styles.cursor}
-          tabIndex={0}
-          role="group"
-          aria-roledescription="chart"
-          aria-label={caption}
-          aria-describedby={valueId}
-          onKeyDown={handleKeyDown}
-          onFocus={handleFocus}
-          onBlur={() => {
-            setCursor(null)
-            setDismissedAt(null)
-          }}
-          onPointerMove={handlePointerMove}
-          onPointerLeave={() => {
-            setHover(null)
-            setDismissedAt(null)
-          }}
-        />
-        <div
-          ref={anchorRef<HTMLDivElement>('position-anchor', anchor)}
-          className={styles.tooltip}
-          hidden={month === undefined}
-          aria-hidden="true"
-          data-chart-tooltip=""
-        >
-          {month === undefined ? null : (
-            <>
-              <p className={styles.tooltipMonth}>
-                {month.label}
-                {month.kind === 'forecast' && <span className={styles.flag}>Forecast</span>}
-                {month.kind === 'current' && <span className={styles.flag}>To date</span>}
-              </p>
-              <dl className={styles.values}>
-                <dt>Net</dt>
-                <dd className={styles.net}>{signed(month.net)}</dd>
-                <dt>Income</dt>
-                <dd>{money(month.income)}</dd>
-                <dt>Expense</dt>
-                <dd>{money(month.expense)}</dd>
-              </dl>
-            </>
-          )}
+      <div className={styles.lead}>
+        <p className={styles.summary}>
+          {summaryParts.map((part, index) => (part.money ? <span key={index} className="money">{part.text}</span> : part.text))}
+        </p>
+        <div ref={plotRef} className={styles.plot}>
+          <canvas ref={canvasRef} className={styles.canvas} role="img" aria-label={summary} />
+          <div className={styles.crosshair} hidden={month === undefined} data-chart-crosshair="" />
+          <div ref={anchorRef<HTMLDivElement>('anchor-name', anchor)} className={styles.anchor} data-chart-anchor="" />
+          <div
+            className={styles.cursor}
+            tabIndex={0}
+            role="group"
+            aria-roledescription="chart"
+            aria-label={caption}
+            aria-describedby={valueId}
+            onKeyDown={handleKeyDown}
+            onFocus={handleFocus}
+            onBlur={() => {
+              setCursor(null)
+              setDismissedAt(null)
+            }}
+            onPointerMove={handlePointerMove}
+            onPointerLeave={() => {
+              setHover(null)
+              setDismissedAt(null)
+            }}
+          />
+          <div
+            ref={anchorRef<HTMLDivElement>('position-anchor', anchor)}
+            className={styles.tooltip}
+            hidden={month === undefined}
+            aria-hidden="true"
+            data-chart-tooltip=""
+          >
+            {month === undefined ? null : (
+              <>
+                <p className={styles.tooltipMonth}>
+                  {month.label}
+                  {month.kind === 'forecast' && <span className={styles.flag}>Forecast</span>}
+                  {month.kind === 'current' && <span className={styles.flag}>To date</span>}
+                </p>
+                <dl className={styles.values}>
+                  <dt>Net</dt>
+                  <dd className={styles.net}>{signed(month.net)}</dd>
+                  <dt>Income</dt>
+                  <dd>{money(month.income)}</dd>
+                  <dt>Expense</dt>
+                  <dd>{money(month.expense)}</dd>
+                </dl>
+              </>
+            )}
+          </div>
         </div>
       </div>
       <p id={valueId} className="visually-hidden" aria-live="polite">{announcement}</p>

@@ -64,8 +64,10 @@ export function ChartSkeleton() {
   return (
     <div className={styles.chartSkeleton} data-chart-skeleton="">
       <div className={styles.skeletonLine}><Skeleton /></div>
-      <div className={cx(styles.skeletonLine, styles.skeletonSummary)}><Skeleton variant="text" lines={2} /></div>
-      <div className={cx(styles.skeletonPlot, styles.fill)}><Skeleton /></div>
+      <div className={styles.skeletonLead}>
+        <div className={cx(styles.skeletonLine, styles.skeletonSummary)}><Skeleton variant="text" lines={2} /></div>
+        <div className={styles.fill} data-chart-skeleton-plot=""><Skeleton /></div>
+      </div>
       <div className={styles.skeletonLine}><Skeleton /></div>
     </div>
   )

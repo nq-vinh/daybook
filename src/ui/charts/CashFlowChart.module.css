@@ -11,16 +11,23 @@
   font-weight: var(--font-weight-strong);
 }
 
+.lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(var(--space-16), 1fr);
+  gap: var(--space-3);
+  min-block-size: calc(2lh + var(--space-3) + var(--chart-plot-height));
+  font-size: var(--text-sm);
+}
+
 .summary {
   max-inline-size: var(--prose-max-width);
   margin: 0;
   color: var(--color-text-muted);
-  font-size: var(--text-sm);
 }
 
 .plot {
   position: relative;
-  block-size: calc(var(--space-16) * 4);
 }
 
 .canvas {
